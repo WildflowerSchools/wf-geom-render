@@ -6,7 +6,7 @@ VERSION = open(os.path.join(BASEDIR, 'VERSION')).read().strip()
 
 # Dependencies (format is 'PYPI_PACKAGE_NAME[>=]=VERSION_NUMBER')
 BASE_DEPENDENCIES = [
-    'wf-cv-utils>=0.1.0'
+    'wf-cv-utils>=0.1.0',
     'numpy>=1.17'
 ]
 
