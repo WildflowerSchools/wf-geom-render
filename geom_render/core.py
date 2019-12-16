@@ -30,3 +30,21 @@ class Line(Geom):
     self.thickness = thickness
     self.line_type = line_type
     super().__init__(color, alpha)
+
+class Text(Geom):
+    def __init__(
+    self,
+    text,
+    font=None,
+    font_size=8,
+    horizontal_anchor='center',
+    vertical_anchor='middle',
+    color,
+    alpha
+    ):
+    self.text=text
+    self.font=font
+    self.font_size=font_size
+    self.horizontal_anchor=horizontal_anchor
+    self.vertical_anchor=vertical_anchor
+    super().__init__(color, alpha)
