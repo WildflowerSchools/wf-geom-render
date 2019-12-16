@@ -7,8 +7,8 @@ class Geom:
         color=(0,0,0), # Using BGR for compatibility with opencv
         alpha=1.0 # Range from 0.0 to 1.0
     ):
-    self.color = color
-    self.alpha = alpha
+        self.color = color
+        self.alpha = alpha
 
 class Circle(Geom):
     def __init__(
@@ -17,8 +17,8 @@ class Circle(Geom):
     *args,
     **kwargs
     ):
-    self.radius = radius
-    super().__init__(*args, **kwargs)
+        self.radius = radius
+        super().__init__(*args, **kwargs)
 
 class Circle2D(Circle):
     def __init__(
@@ -27,14 +27,14 @@ class Circle2D(Circle):
     *args,
     **kwargs
     ):
-    try:
-        coordinates = np.array(coordinates)
-    except:
-        raise ValueError('Coordinates must be array-like')
-    if coordinates.shape != tuple(2):
-        raise ValueError('Coordinates must be of shape (2,)')
-    self.coordinates = coordinates
-    super().__init__(*args, **kwargs)
+        try:
+            coordinates = np.array(coordinates)
+        except:
+            raise ValueError('Coordinates must be array-like')
+        if coordinates.shape != (2,):
+            raise ValueError('Coordinates must be of shape (2,)')
+        self.coordinates = coordinates
+        super().__init__(*args, **kwargs)
 
 class Circle3D(Circle):
     def __init__(
@@ -43,14 +43,14 @@ class Circle3D(Circle):
     *args,
     **kwargs
     ):
-    try:
-        coordinates = np.array(coordinates)
-    except:
-        raise ValueError('Coordinates must be array-like')
-    if coordinates.shape != tuple(3):
-        raise ValueError('Coordinates must be of shape (3,)')
-    self.coordinates = coordinates
-    super().__init__(*args, **kwargs)
+        try:
+            coordinates = np.array(coordinates)
+        except:
+            raise ValueError('Coordinates must be array-like')
+        if coordinates.shape != (2,):
+            raise ValueError('Coordinates must be of shape (3,)')
+        self.coordinates = coordinates
+        super().__init__(*args, **kwargs)
 
 class Line(Geom):
     def __init__(
@@ -60,9 +60,9 @@ class Line(Geom):
     *args,
     **kwargs
     ):
-    self.thickness = thickness
-    self.line_type = line_type
-    super().__init__(*args, **kwargs)
+        self.thickness = thickness
+        self.line_type = line_type
+        super().__init__(*args, **kwargs)
 
 class Line2D(Geom):
     def __init__(
@@ -70,13 +70,13 @@ class Line2D(Geom):
     coordinates,
     *args,
     **kwargs):
-    try:
-        coordinates = np.array(coordinates)
-    except:
-        raise ValueError('Coordinates must be array-like')
-    if coordinates.shape != tuple(2,2):
-        raise ValueError('Coordinates must be of shape (2,2)')
-    super().__init__(*args, **kwargs)
+        try:
+            coordinates = np.array(coordinates)
+        except:
+            raise ValueError('Coordinates must be array-like')
+        if coordinates.shape != (2,2):
+            raise ValueError('Coordinates must be of shape (2,2)')
+        super().__init__(*args, **kwargs)
 
 class Line3D(Geom):
     def __init__(
@@ -84,13 +84,13 @@ class Line3D(Geom):
     coordinates,
     *args,
     **kwargs):
-    try:
-        coordinates = np.array(coordinates)
-    except:
-        raise ValueError('Coordinates must be array-like')
-    if coordinates.shape != tuple(2,3):
-        raise ValueError('Coordinates must be of shape (2,3)')
-    super().__init__(*args, **kwargs)
+        try:
+            coordinates = np.array(coordinates)
+        except:
+            raise ValueError('Coordinates must be array-like')
+        if coordinates.shape != (2,3):
+            raise ValueError('Coordinates must be of shape (2,3)')
+        super().__init__(*args, **kwargs)
 
 class Text(Geom):
     def __init__(
@@ -103,12 +103,12 @@ class Text(Geom):
     *args,
     **kwargs
     ):
-    self.text=text
-    self.font=font
-    self.font_size=font_size
-    self.horizontal_anchor=horizontal_anchor
-    self.vertical_anchor=vertical_anchor
-    super().__init__(*args, **kwargs)
+        self.text=text
+        self.font=font
+        self.font_size=font_size
+        self.horizontal_anchor=horizontal_anchor
+        self.vertical_anchor=vertical_anchor
+        super().__init__(*args, **kwargs)
 
 class Text2D(Geom):
     def __init__(
@@ -117,14 +117,14 @@ class Text2D(Geom):
     *args,
     **kwargs
     ):
-    try:
-        coordinates = np.array(coordinates)
-    except:
-        raise ValueError('Coordinates must be array-like')
-    if coordinates.shape != tuple(2,2):
-        raise ValueError('Coordinates must be of shape (2,)')
-    self.coordinates = coordinates
-    super().__init__(*args, **kwargs)
+        try:
+            coordinates = np.array(coordinates)
+        except:
+            raise ValueError('Coordinates must be array-like')
+        if coordinates.shape != (2,2):
+            raise ValueError('Coordinates must be of shape (2,)')
+        self.coordinates = coordinates
+        super().__init__(*args, **kwargs)
 
 class Text3D(Geom):
     def __init__(
@@ -133,11 +133,11 @@ class Text3D(Geom):
     *args,
     **kwargs
     ):
-    try:
-        coordinates = np.array(coordinates)
-    except:
-        raise ValueError('Coordinates must be array-like')
-    if coordinates.shape != tuple(2,2):
-        raise ValueError('Coordinates must be of shape (3,)')
-    self.coordinates = coordinates
-    super().__init__(*args, **kwargs)
+        try:
+            coordinates = np.array(coordinates)
+        except:
+            raise ValueError('Coordinates must be array-like')
+        if coordinates.shape != (2,2):
+            raise ValueError('Coordinates must be of shape (3,)')
+        self.coordinates = coordinates
+        super().__init__(*args, **kwargs)
