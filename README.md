@@ -1,3 +1,3 @@
-# BASE_MODULE_NAME
+# geom_render
 
-SHORT_DESCRIPTION
+A library for projecting 3D geoms into 2D videos

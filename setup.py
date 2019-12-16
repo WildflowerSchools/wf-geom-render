@@ -5,8 +5,9 @@ BASEDIR = os.path.dirname(os.path.abspath(__file__))
 VERSION = open(os.path.join(BASEDIR, 'VERSION')).read().strip()
 
 # Dependencies (format is 'PYPI_PACKAGE_NAME[>=]=VERSION_NUMBER')
-# BASE_DEPENDENCIES = [
-# ]
+BASE_DEPENDENCIES = [
+    'wf-cv-utils>=0.1.0'
+]
 
 # TEST_DEPENDENCIES = [
 # ]
@@ -18,22 +19,22 @@ VERSION = open(os.path.join(BASEDIR, 'VERSION')).read().strip()
 os.chdir(os.path.normpath(BASEDIR))
 
 setup(
-    name='PYPI_PACKAGE_NAME',
+    name='wf-geom-render',
     packages=find_packages(),
     version=VERSION,
     include_package_data=True,
-    description='SHORT_DESCRIPTION',
+    description='A library for projecting 3D geoms into 2D videos',
     long_description=open('README.md').read(),
-    url='https://github.com/WildflowerSchools/PYPI_PACKAGE_NAME',
-    author='AUTHOR_NAME',
-    author_email='AUTHOR_EMAIL',
-    # install_requires=BASE_DEPENDENCIES,
+    url='https://github.com/WildflowerSchools/wf-geom-render',
+    author='Theodore Quinn',
+    author_email='ted.quinn@wildflowerschools.org',
+    install_requires=BASE_DEPENDENCIES,
     # tests_require=TEST_DEPENDENCIES,
     # extras_require = {
     #     'test': TEST_DEPENDENCIES,
     #     'local': LOCAL_DEPENDENCIES
     # },
-    # keywords=['KEYWORD'],
+    keywords=['opencv', 'cv'],
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
