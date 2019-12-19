@@ -4,9 +4,7 @@ import numpy as np
 class Geom:
     def __init__(
         self,
-        coordinates=None,
-        color=(0,0,0), # Using BGR for compatibility with opencv
-        alpha=1.0 # Range from 0.0 to 1.0
+        coordinates=None
     ):
         if coordinates is not None:
             try:
@@ -14,8 +12,6 @@ class Geom:
             except:
                 raise ValueError('Coordinates must be array-like')
         self.coordinates = coordinates
-        self.color = color
-        self.alpha = alpha
 
 class Geom2D(Geom):
     def __init__(self, **kwargs):
@@ -33,21 +29,33 @@ class Circle(Geom):
     def __init__(
         self,
         radius=1,
+        line_color='#ffff00',
+        line_alpha=1.0,
+        fill_color='#ffff00',
+        fill_alpha=0.0,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.radius = radius
+        self.line_color=line_color
+        self.line_alpha=line_alpha
+        self.fill_color=fill_color
+        self.fill_alpha=fill_alpha
 
 class Line(Geom):
     def __init__(
         self,
         thickness=1,
         line_style='solid',
+        color='#ffff00',
+        alpha=1.0,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.thickness = thickness
         self.line_style = line_style
+        self.color=color
+        self.alpha=alpha
 
 class Text(Geom):
     def __init__(
@@ -57,6 +65,10 @@ class Text(Geom):
         font_size=8,
         horizontal_anchor='center',
         vertical_anchor='middle',
+        text_color='#ffff00',
+        text_alpha=1.0,
+        background_color='#ffff00',
+        background_alpha=0.0,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -65,6 +77,10 @@ class Text(Geom):
         self.font_size=font_size
         self.horizontal_anchor=horizontal_anchor
         self.vertical_anchor=vertical_anchor
+        self.text_color=text_color
+        self.text_alpha=text_alpha
+        self.background_color=background_color
+        self.background_alpha=background_alpha
 
 class Circle2D(Geom2D, Circle):
     def __init__(self, **kwargs):
