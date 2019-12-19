@@ -4,7 +4,8 @@ import numpy as np
 class Geom:
     def __init__(
         self,
-        coordinates=None
+        coordinates=None,
+        coordinate_indices=None
     ):
         if coordinates is not None:
             try:
@@ -12,18 +13,28 @@ class Geom:
             except:
                 raise ValueError('Coordinates must be array-like')
         self.coordinates = coordinates
+        self.coordinate_indices=coordinate_indices
 
 class Geom2D(Geom):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        if self.coordinates.shape[-1] != 2:
+        if self.coordinates is not None and self.coordinates.shape[-1] != 2:
             raise ValueError('For 2D geoms, size of last dimension must be 2')
 
 class Geom3D(Geom):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        if self.coordinates.shape[-1] != 3:
+        if self.coordinates is not None and self.coordinates.shape[-1] != 3:
             raise ValueError('For 3D geoms, size of last dimension must be 3')
+
+class GeomCollection(Geom):
+    def __init__(
+        self,
+        geom_list=None,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.geom_list = geom_list
 
 class Circle(Geom):
     def __init__(
@@ -81,6 +92,14 @@ class Text(Geom):
         self.text_alpha=text_alpha
         self.background_color=background_color
         self.background_alpha=background_alpha
+
+class GeomCollection2D(Geom2D, GeomCollection):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class GeomCollection3D(Geom3D, GeomCollection):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 class Circle2D(Geom2D, Circle):
     def __init__(self, **kwargs):
