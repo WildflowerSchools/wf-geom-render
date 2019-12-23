@@ -5,15 +5,29 @@ class Geom:
     def __init__(
         self,
         coordinates=None,
-        coordinate_indices=None
+        coordinate_indices=None,
+        time_index=None
     ):
         if coordinates is not None:
             try:
-                coordinates = np.squeeze(np.array(coordinates))
+                coordinates = np.array(coordinates)
             except:
                 raise ValueError('Coordinates must be array-like')
+        if time_index is not None:
+            try:
+                time_index = np.array(time_index)
+            except:
+                raise ValueError('Time index must be array-like')
+            time_index_sort_order = np.argsort(time_index)
+            time_index = time_index[time_index_sort_order]
+            if coordinates is not None:
+                if coordinates.shape[0] != time_index.shape[0]:
+                    raise ValueError('First dimension of coordinates array must be of same length as time index')
+                coordinates = coordinates[time_index_sort_order]
         self.coordinates = coordinates
-        self.coordinate_indices=coordinate_indices
+        self.coordinate_indices = coordinate_indices
+        self.time_index = time_index
+
 
 class Geom2D(Geom):
     def __init__(self, **kwargs):
