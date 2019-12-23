@@ -1,5 +1,6 @@
 import cv_utils
 import numpy as np
+import copy
 
 class Geom:
     def __init__(
@@ -18,6 +19,8 @@ class Geom:
                 time_index = np.array(time_index)
             except:
                 raise ValueError('Time index must be array-like')
+            if time_index.ndim != 1:
+                raise ValueError('Time index must be one-dimensional')
             time_index_sort_order = np.argsort(time_index)
             time_index = time_index[time_index_sort_order]
             if coordinates is not None:
@@ -27,6 +30,52 @@ class Geom:
         self.coordinates = coordinates
         self.coordinate_indices = coordinate_indices
         self.time_index = time_index
+
+    def resample(
+        self,
+        new_time_index,
+        method='interpolate'
+    ):
+        if method not in ['interpolate', 'fill']:
+            raise ValueError('Available resampling methods are \'interpolate\' and \'fill\'')
+        try:
+            new_time_index = np.array(new_time_index)
+        except:
+            raise ValueError('New time index must be array-like')
+        if new_time_index.ndim != 1:
+            raise ValueError('New time index must be one-dimensional')
+        new_time_index.sort()
+        num_new_time_slices = new_time_index.shape[0]
+        coordinates_time_slice_shape = self.coordinates.shape[1:]
+        new_coordinates_shape = (num_new_time_slices,) + coordinates_time_slice_shape
+        new_coordinates = np.full(new_coordinates_shape, np.nan)
+        old_time_index_pointer = 0
+        for new_time_index_pointer in range(num_new_time_slices):
+            if new_time_index[new_time_index_pointer] < self.time_index[old_time_index_pointer]:
+                continue
+            if new_time_index[new_time_index_pointer] > self.time_index[-1]:
+                break
+            while new_time_index[new_time_index_pointer] > self.time_index[old_time_index_pointer + 1]:
+                old_time_index_pointer += 1
+            if method == 'interpolate':
+                later_slice_weight = (
+                    (new_time_index[new_time_index_pointer] - self.time_index[old_time_index_pointer])/
+                    (self.time_index[old_time_index_pointer + 1] - self.time_index[old_time_index_pointer])
+                )
+                earlier_slice_weight = 1.0 - later_slice_weight
+            else:
+                earlier_slice_weight = 1.0
+                later_slice_weight = 0.0
+            new_coordinates[new_time_index_pointer] = (
+                earlier_slice_weight*self.coordinates[old_time_index_pointer] +
+                later_slice_weight*self.coordinates[old_time_index_pointer + 1]
+            )
+        new_geom = copy.deepcopy(self)
+        new_geom.time_index = new_time_index
+        new_geom.coordinates = new_coordinates
+        return new_geom
+
+
 
 
 class Geom2D(Geom):
