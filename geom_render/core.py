@@ -1,6 +1,7 @@
 import cv_utils
 import numpy as np
 import copy
+import matplotlib.pyplot as plt
 
 class Geom:
     def __init__(
@@ -103,30 +104,30 @@ class Circle(Geom):
     def __init__(
         self,
         radius=1,
+        fill=True,
         line_color='#ffff00',
-        line_alpha=1.0,
         fill_color='#ffff00',
-        fill_alpha=0.0,
+        alpha=0.0,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.radius = radius
+        self.fill = fill
         self.line_color=line_color
-        self.line_alpha=line_alpha
         self.fill_color=fill_color
-        self.fill_alpha=fill_alpha
+        self.alpha=alpha
 
 class Line(Geom):
     def __init__(
         self,
-        thickness=1,
+        line_width=1,
         line_style='solid',
         color='#ffff00',
         alpha=1.0,
         **kwargs
     ):
         super().__init__(**kwargs)
-        self.thickness = thickness
+        self.line_width = line_width
         self.line_style = line_style
         self.color=color
         self.alpha=alpha
@@ -135,26 +136,40 @@ class Text(Geom):
     def __init__(
         self,
         text=None,
-        font=None,
-        font_size=8,
-        horizontal_anchor='center',
-        vertical_anchor='middle',
-        text_color='#ffff00',
+        font_family=None,
+        font_style=None,
+        font_weight=None,
+        font_size=None,
+        text_color='#000000',
         text_alpha=1.0,
-        background_color='#ffff00',
-        background_alpha=0.0,
+        horizontal_alignment='center',
+        vertical_alignment='bottom',
+        box=False,
+        box_line_color='#000000',
+        box_fill=False,
+        box_fill_color='#ffff00',
+        box_alpha=1.0,
+        box_line_width=1.0,
+        box_line_style=None,
         **kwargs
     ):
         super().__init__(**kwargs)
-        self.text=text
-        self.font=font
-        self.font_size=font_size
-        self.horizontal_anchor=horizontal_anchor
-        self.vertical_anchor=vertical_anchor
-        self.text_color=text_color
-        self.text_alpha=text_alpha
-        self.background_color=background_color
-        self.background_alpha=background_alpha
+        self.text = text
+        self.font_family = font_family
+        self.font_style = font_style
+        self.font_weight = font_weight
+        self.font_size = font_size
+        self.text_color = text_color
+        self.text_alpha = text_alpha
+        self.horizontal_alignment = horizontal_alignment
+        self.vertical_alignment = vertical_alignment
+        self.box = box
+        self.box_line_color = box_line_color
+        self.box_fill = box_fill
+        self.box_fill_color = box_fill_color
+        self.box_alpha = box_alpha
+        self.box_line_width = box_line_width
+        self.box_line_style = box_line_style
 
 class GeomCollection2D(Geom2D, GeomCollection):
     def __init__(self, **kwargs):
@@ -168,6 +183,16 @@ class Circle2D(Geom2D, Circle):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def draw_matplotlib(self, axis):
+        axis.add_artist(plt.Circle(
+            xy=self.coordinates,
+            radius=self.radius,
+            fill=self.fill,
+            edgecolor=self.line_color,
+            facecolor=self.fill_color,
+            alpha=self.alpha
+        ))
+
 class Circle3D(Geom3D, Circle):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -176,6 +201,16 @@ class Line2D(Geom2D, Line):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def draw_matplotlib(self, axis):
+        axis.add_artist(plt.Line2D(
+            (self.coordinates[0,0], self.coordinates[1,0]),
+            (self.coordinates[0,1], self.coordinates[1,1]),
+            linewidth=self.line_width,
+            linestyle=self.line_style,
+            color=self.color,
+            alpha=self.alpha,
+        ))
+
 class Line3D(Geom3D, Line):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -183,6 +218,32 @@ class Line3D(Geom3D, Line):
 class Text2D(Geom2D, Text):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def draw_matplotlib(self, axis):
+        bbox = None
+        if self.box:
+            bbox = {
+                'edgecolor': self.box_line_color,
+                'fill': self.box_fill,
+                'facecolor': self.box_fill_color,
+                'alpha': self.box_alpha,
+                'linewidth': self.box_line_width,
+                'linestyle': self.box_line_style
+            }
+        axis.text(
+            self.coordinates[0],
+            self.coordinates[1],
+            self.text,
+            fontfamily=self.font_family,
+            fontstyle=self.font_style,
+            fontweight=self.font_weight,
+            fontsize=self.font_size,
+            color=self.text_color,
+            alpha=self.text_alpha,
+            horizontalalignment=self.horizontal_alignment,
+            verticalalignment=self.vertical_alignment,
+            bbox=bbox
+        )
 
 class Text3D(Geom3D, Text):
     def __init__(self, **kwargs):
