@@ -1,6 +1,7 @@
 import cv_utils
 import numpy as np
 import copy
+import matplotlib.pyplot as plt
 
 class Geom:
     def __init__(
@@ -103,18 +104,18 @@ class Circle(Geom):
     def __init__(
         self,
         radius=1,
+        fill=True,
         line_color='#ffff00',
-        line_alpha=1.0,
         fill_color='#ffff00',
-        fill_alpha=0.0,
+        alpha=0.0,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.radius = radius
+        self.fill = fill
         self.line_color=line_color
-        self.line_alpha=line_alpha
         self.fill_color=fill_color
-        self.fill_alpha=fill_alpha
+        self.alpha=alpha
 
 class Line(Geom):
     def __init__(
@@ -167,6 +168,16 @@ class GeomCollection3D(Geom3D, GeomCollection):
 class Circle2D(Geom2D, Circle):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def draw_matplotlib(self, axis):
+        axis.add_artist(plt.Circle(
+            xy=self.coordinates,
+            radius=self.radius,
+            fill=self.fill,
+            edgecolor=self.line_color,
+            facecolor=self.fill_color,
+            alpha=self.alpha
+        ))
 
 class Circle3D(Geom3D, Circle):
     def __init__(self, **kwargs):
