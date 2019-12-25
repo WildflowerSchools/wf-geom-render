@@ -117,6 +117,25 @@ class Circle(Geom):
         self.fill_color=fill_color
         self.alpha=alpha
 
+class Point(Geom):
+    def __init__(
+        self,
+        marker=None,
+        size=None,
+        line_width=None,
+        line_color=None,
+        fill_color=None,
+        alpha=1.0,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.marker = marker
+        self.size = size
+        self.line_width=line_width
+        self.line_color=line_color
+        self.fill_color=fill_color
+        self.alpha=alpha
+
 class Line(Geom):
     def __init__(
         self,
@@ -194,6 +213,29 @@ class Circle2D(Geom2D, Circle):
         ))
 
 class Circle3D(Geom3D, Circle):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class Point2D(Geom2D, Point):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def draw_matplotlib(self, axis):
+        s = None
+        if self.size is not None:
+            s=self.size**2
+        axis.scatter(
+            self.coordinates[0],
+            self.coordinates[1],
+            marker=self.marker,
+            s=s,
+            linewidths=self.line_width,
+            edgecolors=self.line_color,
+            color=self.fill_color,
+            alpha=self.alpha,
+        )
+
+class Point3D(Geom3D, Point):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
