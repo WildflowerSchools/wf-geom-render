@@ -120,14 +120,14 @@ class Circle(Geom):
 class Line(Geom):
     def __init__(
         self,
-        thickness=1,
+        line_width=1,
         line_style='solid',
         color='#ffff00',
         alpha=1.0,
         **kwargs
     ):
         super().__init__(**kwargs)
-        self.thickness = thickness
+        self.line_width = line_width
         self.line_style = line_style
         self.color=color
         self.alpha=alpha
@@ -186,6 +186,16 @@ class Circle3D(Geom3D, Circle):
 class Line2D(Geom2D, Line):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def draw_matplotlib(self, axis):
+        axis.add_artist(plt.Line2D(
+            (self.coordinates[0,0], self.coordinates[1,0]),
+            (self.coordinates[0,1], self.coordinates[1,1]),
+            linewidth=self.line_width,
+            linestyle=self.line_style,
+            color=self.color,
+            alpha=self.alpha,
+        ))
 
 class Line3D(Geom3D, Line):
     def __init__(self, **kwargs):
