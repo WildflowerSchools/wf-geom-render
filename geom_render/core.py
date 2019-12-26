@@ -105,6 +105,34 @@ class GeomCollection(Geom):
         super().__init__(**kwargs)
         self.geom_list = geom_list
 
+    @classmethod
+    def from_geom_list(cls, geom_list):
+        num_points = 0
+        num_spatial_dimensions = geom_list[0].coordinates.shape[-1]
+        for geom in geom_list:
+            if geom.coordinates.shape[0] != 1:
+                raise ValueError('All geoms in list must be for a single time slice')
+            if geom.coordinates.shape[-1] != num_spatial_dimensions:
+                raise ValueError('All geoms in list must have the same number of spatial_dimensions')
+            num_points += geom.coordinates.shape[1]
+        new_coordinates = np.full((1, num_points, num_spatial_dimensions), np.nan)
+        new_geom_list = list()
+        coordinate_index = 0
+        for geom in geom_list:
+            coordinate_indices = list()
+            for point_index in range(geom.coordinates.shape[1]):
+                new_coordinates[0, coordinate_index] = geom.coordinates[0, point_index]
+                coordinate_indices.append(coordinate_index)
+                coordinate_index += 1
+            new_geom = copy.deepcopy(geom)
+            new_geom.coordinates = None,
+            new_geom.coordinate_indices = coordinate_indices
+            new_geom_list.append(new_geom)
+        return cls(
+            coordinates=new_coordinates,
+            geom_list=new_geom_list
+        )
+
 class Circle(Geom):
     def __init__(
         self,
