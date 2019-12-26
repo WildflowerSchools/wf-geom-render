@@ -14,7 +14,11 @@ class Geom:
             try:
                 coordinates = np.array(coordinates)
             except:
-                raise ValueError('Coordinates must be array-like')
+                raise ValueError('Coordinates for geom must be array-like')
+            if coordinates.ndim > 3:
+                raise ValueError('Coordinates for geom must be of dimension 3 or less')
+            while coordinates.ndim < 3:
+                coordinates = np.expand_dims(coordinates, axis=0)
         if time_index is not None:
             try:
                 time_index = np.array(time_index)
@@ -22,12 +26,13 @@ class Geom:
                 raise ValueError('Time index must be array-like')
             if time_index.ndim != 1:
                 raise ValueError('Time index must be one-dimensional')
+            num_time_slices = time_index.shape[0]
             time_index_sort_order = np.argsort(time_index)
             time_index = time_index[time_index_sort_order]
             if coordinates is not None:
-                if coordinates.shape[0] != time_index.shape[0]:
+                if coordinates.shape[0] != num_time_slices:
                     raise ValueError('First dimension of coordinates array must be of same length as time index')
-                coordinates = coordinates[time_index_sort_order]
+                coordinates = coordinates.take(time_index_sort_order, axis=0)
         self.coordinates = coordinates
         self.coordinate_indices = coordinate_indices
         self.time_index = time_index
@@ -194,6 +199,12 @@ class GeomCollection2D(Geom2D, GeomCollection):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def draw_matplotlib(self, axis):
+        for geom_index, geom in enumerate(self.geom_list):
+            geom_copy = copy.deepcopy(geom)
+            geom_copy.coordinates = self.coordinates.take(geom_copy.coordinate_indices, 1)
+            geom_copy.draw_matplotlib(axis)
+
 class GeomCollection3D(Geom3D, GeomCollection):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -203,8 +214,10 @@ class Circle2D(Geom2D, Circle):
         super().__init__(**kwargs)
 
     def draw_matplotlib(self, axis):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Circle2D requires coordinates to be of shape (1, 1, 2)')
         axis.add_artist(plt.Circle(
-            xy=self.coordinates,
+            xy=self.coordinates[0, 0, :],
             radius=self.radius,
             fill=self.fill,
             edgecolor=self.line_color,
@@ -221,12 +234,14 @@ class Point2D(Geom2D, Point):
         super().__init__(**kwargs)
 
     def draw_matplotlib(self, axis):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Point2D requires coordinates to be of shape (1, 1, 2)')
         s = None
         if self.size is not None:
             s=self.size**2
         axis.scatter(
-            self.coordinates[0],
-            self.coordinates[1],
+            self.coordinates[0, 0, 0],
+            self.coordinates[0, 0, 1],
             marker=self.marker,
             s=s,
             linewidths=self.line_width,
@@ -244,9 +259,11 @@ class Line2D(Geom2D, Line):
         super().__init__(**kwargs)
 
     def draw_matplotlib(self, axis):
+        if self.coordinates.shape != (1, 2, 2):
+            raise ValueError('Draw method for Line2D requires coordinates to be of shape (1, 2, 2)')
         axis.add_artist(plt.Line2D(
-            (self.coordinates[0,0], self.coordinates[1,0]),
-            (self.coordinates[0,1], self.coordinates[1,1]),
+            (self.coordinates[0, 0, 0], self.coordinates[0, 1,0]),
+            (self.coordinates[0, 0, 1], self.coordinates[0, 1, 1]),
             linewidth=self.line_width,
             linestyle=self.line_style,
             color=self.color,
@@ -262,6 +279,8 @@ class Text2D(Geom2D, Text):
         super().__init__(**kwargs)
 
     def draw_matplotlib(self, axis):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Text2D requires coordinates to be of shape (1, 1, 2)')
         bbox = None
         if self.box:
             bbox = {
@@ -273,8 +292,8 @@ class Text2D(Geom2D, Text):
                 'linestyle': self.box_line_style
             }
         axis.text(
-            self.coordinates[0],
-            self.coordinates[1],
+            self.coordinates[0, 0, 0],
+            self.coordinates[0, 0, 1],
             self.text,
             fontfamily=self.font_family,
             fontstyle=self.font_style,
