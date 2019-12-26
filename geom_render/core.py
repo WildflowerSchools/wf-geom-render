@@ -81,9 +81,6 @@ class Geom:
         new_geom.coordinates = new_coordinates
         return new_geom
 
-
-
-
 class Geom2D(Geom):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -136,28 +133,32 @@ class GeomCollection(Geom):
 class Circle(Geom):
     def __init__(
         self,
-        radius=1,
+        radius=6,
+        line_width=1.5,
+        line_style='solid',
+        line_color='#00ff00',
         fill=True,
-        line_color='#ffff00',
-        fill_color='#ffff00',
-        alpha=0.0,
+        fill_color='#00ff00',
+        alpha=1.0,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.radius = radius
-        self.fill = fill
+        self.line_width = line_width
+        self.line_style = line_style
         self.line_color=line_color
+        self.fill = fill
         self.fill_color=fill_color
         self.alpha=alpha
 
 class Point(Geom):
     def __init__(
         self,
-        marker=None,
-        size=None,
-        line_width=None,
-        line_color=None,
-        fill_color=None,
+        marker='o',
+        size=6,
+        line_width=1.5,
+        line_color='#00ff00',
+        fill_color='#00ff00',
         alpha=1.0,
         **kwargs
     ):
@@ -172,9 +173,9 @@ class Point(Geom):
 class Line(Geom):
     def __init__(
         self,
-        line_width=1,
+        line_width=1.5,
         line_style='solid',
-        color='#ffff00',
+        color='#00ff00',
         alpha=1.0,
         **kwargs
     ):
@@ -197,12 +198,12 @@ class Text(Geom):
         horizontal_alignment='center',
         vertical_alignment='bottom',
         box=False,
+        box_line_width=1.5,
+        box_line_style='solid',
         box_line_color='#000000',
         box_fill=False,
         box_fill_color='#ffff00',
         box_alpha=1.0,
-        box_line_width=1.0,
-        box_line_style=None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -247,8 +248,10 @@ class Circle2D(Geom2D, Circle):
         axis.add_artist(plt.Circle(
             xy=self.coordinates[0, 0, :],
             radius=self.radius,
-            fill=self.fill,
+            linewidth=self.line_width,
+            linestyle=self.line_style,
             edgecolor=self.line_color,
+            fill=self.fill,
             facecolor=self.fill_color,
             alpha=self.alpha
         ))
