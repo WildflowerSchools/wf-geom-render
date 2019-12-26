@@ -14,7 +14,11 @@ class Geom:
             try:
                 coordinates = np.array(coordinates)
             except:
-                raise ValueError('Coordinates must be array-like')
+                raise ValueError('Coordinates for geom must be array-like')
+            if coordinates.ndim > 3:
+                raise ValueError('Coordinates for geom must be of dimension 3 or less')
+            while coordinates.ndim < 3:
+                coordinates = np.expand_dims(coordinates, axis=0)
         if time_index is not None:
             try:
                 time_index = np.array(time_index)
@@ -22,12 +26,13 @@ class Geom:
                 raise ValueError('Time index must be array-like')
             if time_index.ndim != 1:
                 raise ValueError('Time index must be one-dimensional')
+            num_time_slices = time_index.shape[0]
             time_index_sort_order = np.argsort(time_index)
             time_index = time_index[time_index_sort_order]
             if coordinates is not None:
-                if coordinates.shape[0] != time_index.shape[0]:
+                if coordinates.shape[0] != num_time_slices:
                     raise ValueError('First dimension of coordinates array must be of same length as time index')
-                coordinates = coordinates[time_index_sort_order]
+                coordinates = coordinates.take(time_index_sort_order, axis=0)
         self.coordinates = coordinates
         self.coordinate_indices = coordinate_indices
         self.time_index = time_index
@@ -76,9 +81,6 @@ class Geom:
         new_geom.coordinates = new_coordinates
         return new_geom
 
-
-
-
 class Geom2D(Geom):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -100,31 +102,63 @@ class GeomCollection(Geom):
         super().__init__(**kwargs)
         self.geom_list = geom_list
 
+    @classmethod
+    def from_geom_list(cls, geom_list):
+        num_points = 0
+        num_spatial_dimensions = geom_list[0].coordinates.shape[-1]
+        for geom in geom_list:
+            if geom.coordinates.shape[0] != 1:
+                raise ValueError('All geoms in list must be for a single time slice')
+            if geom.coordinates.shape[-1] != num_spatial_dimensions:
+                raise ValueError('All geoms in list must have the same number of spatial_dimensions')
+            num_points += geom.coordinates.shape[1]
+        new_coordinates = np.full((1, num_points, num_spatial_dimensions), np.nan)
+        new_geom_list = list()
+        coordinate_index = 0
+        for geom in geom_list:
+            coordinate_indices = list()
+            for point_index in range(geom.coordinates.shape[1]):
+                new_coordinates[0, coordinate_index] = geom.coordinates[0, point_index]
+                coordinate_indices.append(coordinate_index)
+                coordinate_index += 1
+            new_geom = copy.deepcopy(geom)
+            new_geom.coordinates = None,
+            new_geom.coordinate_indices = coordinate_indices
+            new_geom_list.append(new_geom)
+        return cls(
+            coordinates=new_coordinates,
+            geom_list=new_geom_list
+        )
+
 class Circle(Geom):
     def __init__(
         self,
-        radius=1,
+        radius=6,
+        line_width=1.5,
+        line_style='solid',
+        line_color='#00ff00',
         fill=True,
-        line_color='#ffff00',
-        fill_color='#ffff00',
-        alpha=0.0,
+        fill_color='#00ff00',
+        alpha=1.0,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.radius = radius
-        self.fill = fill
+        self.line_width = line_width
+        self.line_style = line_style
         self.line_color=line_color
+        self.fill = fill
         self.fill_color=fill_color
         self.alpha=alpha
 
 class Point(Geom):
     def __init__(
         self,
-        marker=None,
-        size=None,
-        line_width=None,
-        line_color=None,
-        fill_color=None,
+        marker='o',
+        size=6,
+        line_width=1.5,
+        line_color='#00ff00',
+        fill_color='#00ff00',
         alpha=1.0,
         **kwargs
     ):
@@ -139,9 +173,9 @@ class Point(Geom):
 class Line(Geom):
     def __init__(
         self,
-        line_width=1,
+        line_width=1.5,
         line_style='solid',
-        color='#ffff00',
+        color='#00ff00',
         alpha=1.0,
         **kwargs
     ):
@@ -164,12 +198,12 @@ class Text(Geom):
         horizontal_alignment='center',
         vertical_alignment='bottom',
         box=False,
+        box_line_width=1.5,
+        box_line_style='solid',
         box_line_color='#000000',
         box_fill=False,
         box_fill_color='#ffff00',
         box_alpha=1.0,
-        box_line_width=1.0,
-        box_line_style=None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -194,6 +228,12 @@ class GeomCollection2D(Geom2D, GeomCollection):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def draw_matplotlib(self, axis):
+        for geom_index, geom in enumerate(self.geom_list):
+            geom_copy = copy.deepcopy(geom)
+            geom_copy.coordinates = self.coordinates.take(geom_copy.coordinate_indices, 1)
+            geom_copy.draw_matplotlib(axis)
+
 class GeomCollection3D(Geom3D, GeomCollection):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -203,11 +243,15 @@ class Circle2D(Geom2D, Circle):
         super().__init__(**kwargs)
 
     def draw_matplotlib(self, axis):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Circle2D requires coordinates to be of shape (1, 1, 2)')
         axis.add_artist(plt.Circle(
-            xy=self.coordinates,
+            xy=self.coordinates[0, 0, :],
             radius=self.radius,
-            fill=self.fill,
+            linewidth=self.line_width,
+            linestyle=self.line_style,
             edgecolor=self.line_color,
+            fill=self.fill,
             facecolor=self.fill_color,
             alpha=self.alpha
         ))
@@ -221,12 +265,14 @@ class Point2D(Geom2D, Point):
         super().__init__(**kwargs)
 
     def draw_matplotlib(self, axis):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Point2D requires coordinates to be of shape (1, 1, 2)')
         s = None
         if self.size is not None:
             s=self.size**2
         axis.scatter(
-            self.coordinates[0],
-            self.coordinates[1],
+            self.coordinates[0, 0, 0],
+            self.coordinates[0, 0, 1],
             marker=self.marker,
             s=s,
             linewidths=self.line_width,
@@ -244,9 +290,11 @@ class Line2D(Geom2D, Line):
         super().__init__(**kwargs)
 
     def draw_matplotlib(self, axis):
+        if self.coordinates.shape != (1, 2, 2):
+            raise ValueError('Draw method for Line2D requires coordinates to be of shape (1, 2, 2)')
         axis.add_artist(plt.Line2D(
-            (self.coordinates[0,0], self.coordinates[1,0]),
-            (self.coordinates[0,1], self.coordinates[1,1]),
+            (self.coordinates[0, 0, 0], self.coordinates[0, 1,0]),
+            (self.coordinates[0, 0, 1], self.coordinates[0, 1, 1]),
             linewidth=self.line_width,
             linestyle=self.line_style,
             color=self.color,
@@ -262,6 +310,8 @@ class Text2D(Geom2D, Text):
         super().__init__(**kwargs)
 
     def draw_matplotlib(self, axis):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Text2D requires coordinates to be of shape (1, 1, 2)')
         bbox = None
         if self.box:
             bbox = {
@@ -273,8 +323,8 @@ class Text2D(Geom2D, Text):
                 'linestyle': self.box_line_style
             }
         axis.text(
-            self.coordinates[0],
-            self.coordinates[1],
+            self.coordinates[0, 0, 0],
+            self.coordinates[0, 0, 1],
             self.text,
             fontfamily=self.font_family,
             fontstyle=self.font_style,
