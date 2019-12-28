@@ -106,7 +106,8 @@ class Geom3D(Geom):
                 rotation_vector,
                 translation_vector,
                 camera_matrix,
-                distortion_coefficients
+                distortion_coefficients,
+                remove_behind_camera=True
             ),
             axis=-1,
             arr=self.coordinates
