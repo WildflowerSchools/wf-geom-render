@@ -92,6 +92,7 @@ class Geom2D(Geom):
         image_size=None,
         background_image=None,
         background_alpha=None,
+        show_axes=True,
         show=True
     ):
         if image_size is None and background_image is not None:
@@ -101,7 +102,7 @@ class Geom2D(Geom):
         )
         fig, axes = plt.subplots()
         self.draw_matplotlib(axes)
-        cv_utils.format_2d_image_plot(image_size)
+        cv_utils.format_2d_image_plot(image_size, show_axes)
         if background_image is not None:
             cv_utils.draw_background_image(
                 background_image,
