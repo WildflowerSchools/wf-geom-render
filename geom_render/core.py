@@ -87,6 +87,19 @@ class Geom2D(Geom):
         if self.coordinates is not None and self.coordinates.shape[-1] != 2:
             raise ValueError('For 2D geoms, size of last dimension must be 2')
 
+    def plot_matplotlib(
+        self,
+        image_size=None,
+        background_image=None,
+        background_alpha=None,
+        show=True
+    ):
+        fig, axes = plt.subplots()
+        self.draw_matplotlib(axes)
+        cv_utils.format_2d_image_plot(image_size)
+        if show:
+            plt.show()
+
 class Geom3D(Geom):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
