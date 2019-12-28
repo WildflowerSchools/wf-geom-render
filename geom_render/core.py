@@ -464,6 +464,8 @@ class Text2D(Geom2D, Text):
     def draw_matplotlib(self, axis):
         if self.coordinates.shape != (1, 1, 2):
             raise ValueError('Draw method for Text2D requires coordinates to be of shape (1, 1, 2)')
+        if np.any(np.isnan(self.coordinates)):
+            return
         bbox = None
         if self.box:
             bbox = {
@@ -486,7 +488,8 @@ class Text2D(Geom2D, Text):
             alpha=self.text_alpha,
             horizontalalignment=self.horizontal_alignment,
             verticalalignment=self.vertical_alignment,
-            bbox=bbox
+            bbox=bbox,
+            clip_on=True
         )
 
 class Text3D(Geom3D, Text):
