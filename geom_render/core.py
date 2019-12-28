@@ -94,9 +94,19 @@ class Geom2D(Geom):
         background_alpha=None,
         show=True
     ):
+        if image_size is None and background_image is not None:
+            image_size = np.array([
+                background_image.shape[1],
+                background_image.shape[0]]
+        )
         fig, axes = plt.subplots()
         self.draw_matplotlib(axes)
         cv_utils.format_2d_image_plot(image_size)
+        if background_image is not None:
+            cv_utils.draw_background_image(
+                background_image,
+                background_alpha
+            )
         if show:
             plt.show()
 
