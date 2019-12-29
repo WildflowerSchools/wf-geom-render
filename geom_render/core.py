@@ -8,11 +8,13 @@ import datetime
 class GeomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Geom):
-            return obj.__dict__
+            obj_dict = obj.__dict__
+            obj_dict['geom_type'] = obj.__class__.__name__
+            return obj_dict
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         if isinstance(obj, datetime.datetime):
-            return(obj.isoformat())
+            return(obj.astimezone(datetime.timezone.utc).isoformat())
         return json.JSONEncoder.default(self, obj)
 
 class Geom:
