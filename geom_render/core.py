@@ -87,11 +87,56 @@ class Geom2D(Geom):
         if self.coordinates is not None and self.coordinates.shape[-1] != 2:
             raise ValueError('For 2D geoms, size of last dimension must be 2')
 
+    def plot_matplotlib(
+        self,
+        image_size=None,
+        background_image=None,
+        background_alpha=None,
+        show_axes=True,
+        show=True
+    ):
+        if image_size is None and background_image is not None:
+            image_size = np.array([
+                background_image.shape[1],
+                background_image.shape[0]]
+        )
+        fig, axes = plt.subplots()
+        self.draw_matplotlib(axes)
+        cv_utils.format_2d_image_plot(image_size, show_axes)
+        if background_image is not None:
+            cv_utils.draw_background_image(
+                background_image,
+                background_alpha
+            )
+        if show:
+            plt.show()
+
 class Geom3D(Geom):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if self.coordinates is not None and self.coordinates.shape[-1] != 3:
             raise ValueError('For 3D geoms, size of last dimension must be 3')
+
+    def project_coordinates(
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients
+    ):
+        new_coordinates = np.apply_along_axis(
+            lambda points: cv_utils.project_points(
+                points,
+                rotation_vector,
+                translation_vector,
+                camera_matrix,
+                distortion_coefficients,
+                remove_behind_camera=True
+            ),
+            axis=-1,
+            arr=self.coordinates
+        )
+        return new_coordinates
 
 class GeomCollection(Geom):
     def __init__(
@@ -238,6 +283,35 @@ class GeomCollection3D(Geom3D, GeomCollection):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def project(
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients
+    ):
+        new_coordinates=None
+        if self.coordinates is not None:
+            new_coordinates = self.project_coordinates(
+                rotation_vector,
+                translation_vector,
+                camera_matrix,
+                distortion_coefficients
+            )
+
+        new_geom_list = [
+            geom.project(
+                rotation_vector,
+                translation_vector,
+                camera_matrix,
+                distortion_coefficients
+            ) for geom in self.geom_list]
+        return GeomCollection2D(
+            coordinates=new_coordinates,
+            geom_list=new_geom_list,
+            time_index=self.time_index
+        )
+
 class Circle2D(Geom2D, Circle):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -260,6 +334,35 @@ class Circle3D(Geom3D, Circle):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def project(
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients
+    ):
+        new_coordinates=None
+        if self.coordinates is not None:
+            new_coordinates = self.project_coordinates(
+                rotation_vector,
+                translation_vector,
+                camera_matrix,
+                distortion_coefficients
+            )
+        return Circle2D(
+            coordinates=new_coordinates,
+            coordinate_indices=self.coordinate_indices,
+            time_index=self.time_index,
+            radius=self.radius,
+            line_width=self.line_width,
+            line_style=self.line_style,
+            line_color=self.line_color,
+            fill=self.fill,
+            fill_color=self.fill_color,
+            alpha=self.alpha
+        )
+
+
 class Point2D(Geom2D, Point):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -278,12 +381,40 @@ class Point2D(Geom2D, Point):
             linewidths=self.line_width,
             edgecolors=self.line_color,
             color=self.fill_color,
-            alpha=self.alpha,
+            alpha=self.alpha
         )
 
 class Point3D(Geom3D, Point):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def project(
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients
+    ):
+        new_coordinates=None
+        if self.coordinates is not None:
+            new_coordinates = self.project_coordinates(
+                rotation_vector,
+                translation_vector,
+                camera_matrix,
+                distortion_coefficients
+            )
+        return Point2D(
+            coordinates=new_coordinates,
+            coordinate_indices=self.coordinate_indices,
+            time_index=self.time_index,
+            marker=self.marker,
+            size=self.size,
+            line_width=self.line_width,
+            line_color=self.line_color,
+            fill_color=self.fill_color,
+            alpha=self.alpha
+        )
+
 
 class Line2D(Geom2D, Line):
     def __init__(self, **kwargs):
@@ -298,12 +429,37 @@ class Line2D(Geom2D, Line):
             linewidth=self.line_width,
             linestyle=self.line_style,
             color=self.color,
-            alpha=self.alpha,
+            alpha=self.alpha
         ))
 
 class Line3D(Geom3D, Line):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def project(
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients
+    ):
+        new_coordinates=None
+        if self.coordinates is not None:
+            new_coordinates = self.project_coordinates(
+                rotation_vector,
+                translation_vector,
+                camera_matrix,
+                distortion_coefficients
+            )
+        return Line2D(
+            coordinates=new_coordinates,
+            coordinate_indices=self.coordinate_indices,
+            time_index=self.time_index,
+            line_width=self.line_width,
+            line_style=self.line_style,
+            color=self.color,
+            alpha=self.alpha
+        )
 
 class Text2D(Geom2D, Text):
     def __init__(self, **kwargs):
@@ -312,6 +468,8 @@ class Text2D(Geom2D, Text):
     def draw_matplotlib(self, axis):
         if self.coordinates.shape != (1, 1, 2):
             raise ValueError('Draw method for Text2D requires coordinates to be of shape (1, 1, 2)')
+        if np.any(np.isnan(self.coordinates)):
+            return
         bbox = None
         if self.box:
             bbox = {
@@ -334,9 +492,47 @@ class Text2D(Geom2D, Text):
             alpha=self.text_alpha,
             horizontalalignment=self.horizontal_alignment,
             verticalalignment=self.vertical_alignment,
-            bbox=bbox
+            bbox=bbox,
+            clip_on=True
         )
 
 class Text3D(Geom3D, Text):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def project(
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients
+    ):
+        new_coordinates=None
+        if self.coordinates is not None:
+            new_coordinates = self.project_coordinates(
+                rotation_vector,
+                translation_vector,
+                camera_matrix,
+                distortion_coefficients
+            )
+        return Text2D(
+            coordinates=new_coordinates,
+            coordinate_indices=self.coordinate_indices,
+            time_index=self.time_index,
+            text=self.text,
+            font_family=self.font_family,
+            font_style=self.font_style,
+            font_weight=self.font_weight,
+            font_size=self.font_size,
+            text_color=self.text_color,
+            text_alpha=self.text_alpha,
+            horizontal_alignment=self.horizontal_alignment,
+            vertical_alignment=self.vertical_alignment,
+            box=self.box,
+            box_line_width=self.box_line_width,
+            box_line_style=self.box_line_style,
+            box_line_color=self.box_line_color,
+            box_fill=self.box_fill,
+            box_fill_color=self.box_fill_color,
+            box_alpha=self.box_alpha
+        )
