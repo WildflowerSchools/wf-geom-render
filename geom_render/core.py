@@ -2,6 +2,18 @@ import cv_utils
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
+import json
+import datetime
+
+class GeomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Geom):
+            return obj.__dict__
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, datetime.datetime):
+            return(obj.isoformat())
+        return json.JSONEncoder.default(self, obj)
 
 class Geom:
     def __init__(
@@ -36,6 +48,9 @@ class Geom:
         self.coordinates = coordinates
         self.coordinate_indices = coordinate_indices
         self.time_index = time_index
+
+    def to_json(self, indent=None):
+        return json.dumps(self, cls=GeomJSONEncoder, indent=indent)
 
     def resample(
         self,
