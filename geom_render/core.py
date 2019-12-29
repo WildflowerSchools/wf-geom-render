@@ -308,7 +308,8 @@ class GeomCollection3D(Geom3D, GeomCollection):
             ) for geom in self.geom_list]
         return GeomCollection2D(
             coordinates=new_coordinates,
-            geom_list=new_geom_list
+            geom_list=new_geom_list,
+            time_index=self.time_index
         )
 
 class Circle2D(Geom2D, Circle):
@@ -351,6 +352,7 @@ class Circle3D(Geom3D, Circle):
         return Circle2D(
             coordinates=new_coordinates,
             coordinate_indices=self.coordinate_indices,
+            time_index=self.time_index,
             radius=self.radius,
             line_width=self.line_width,
             line_style=self.line_style,
@@ -404,6 +406,7 @@ class Point3D(Geom3D, Point):
         return Point2D(
             coordinates=new_coordinates,
             coordinate_indices=self.coordinate_indices,
+            time_index=self.time_index,
             marker=self.marker,
             size=self.size,
             line_width=self.line_width,
@@ -451,6 +454,7 @@ class Line3D(Geom3D, Line):
         return Line2D(
             coordinates=new_coordinates,
             coordinate_indices=self.coordinate_indices,
+            time_index=self.time_index,
             line_width=self.line_width,
             line_style=self.line_style,
             color=self.color,
@@ -514,6 +518,7 @@ class Text3D(Geom3D, Text):
         return Text2D(
             coordinates=new_coordinates,
             coordinate_indices=self.coordinate_indices,
+            time_index=self.time_index,
             text=self.text,
             font_family=self.font_family,
             font_style=self.font_style,
