@@ -298,7 +298,7 @@ class Text(Geom):
         font_style=None,
         font_weight=None,
         font_size=None,
-        text_color='#000000',
+        text_color='#00ff00',
         text_alpha=1.0,
         horizontal_alignment='center',
         vertical_alignment='bottom',
