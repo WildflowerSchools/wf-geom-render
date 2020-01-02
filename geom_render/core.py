@@ -401,6 +401,8 @@ class Circle2D(Geom2D, Circle):
     def draw_opencv(self, image):
         if self.coordinates.shape != (1, 1, 2):
             raise ValueError('Draw method for Circle2D requires coordinates to be of shape (1, 1, 2)')
+        if np.any(np.isnan(self.coordinates)):
+            return image
         new_image = cv_utils.draw_circle(
             image,
             coordinates=self.coordinates[0, 0],
@@ -469,6 +471,8 @@ class Point2D(Geom2D, Point):
     def draw_opencv(self, image):
         if self.coordinates.shape != (1, 1, 2):
             raise ValueError('Draw method for Point2D requires coordinates to be of shape (1, 1, 2)')
+        if np.any(np.isnan(self.coordinates)):
+            return image
         new_image = cv_utils.draw_point(
             image,
             coordinates=self.coordinates[0, 0],
@@ -531,6 +535,8 @@ class Line2D(Geom2D, Line):
     def draw_opencv(self, image):
         if self.coordinates.shape != (1, 2, 2):
             raise ValueError('Draw method for Line2D requires coordinates to be of shape (1, 2, 2)')
+        if np.any(np.isnan(self.coordinates)):
+            return image
         new_image = cv_utils.draw_line(
             image,
             coordinates=self.coordinates[0],
@@ -607,6 +613,8 @@ class Text2D(Geom2D, Text):
     def draw_opencv(self, image):
         if self.coordinates.shape != (1, 1, 2):
             raise ValueError('Draw method for Text2D requires coordinates to be of shape (1, 1, 2)')
+        if np.any(np.isnan(self.coordinates)):
+            return image
         new_image = cv_utils.draw_text(
             image,
             coordinates=self.coordinates[0,0],
