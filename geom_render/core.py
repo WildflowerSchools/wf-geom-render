@@ -2,6 +2,7 @@ import cv_utils
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
+import tqdm
 import json
 import datetime
 import logging
@@ -135,7 +136,8 @@ class Geom2D(Geom):
         self,
         input_path,
         output_path,
-        start_time=None
+        start_time=None,
+        progress_bar=False
     ):
         if self.time_index is not None:
             raise NotImplementedError('Video overlay for geom sequences not yet implemented')
@@ -144,6 +146,10 @@ class Geom2D(Geom):
             output_path,
             video_parameters=video_input.video_parameters
         )
+        if progress_bar:
+            t = tqdm.tqdm(
+                total=video_input.video_parameters.frame_count
+            )
         frame_count_stream = 0
         while(video_input.is_opened()):
             frame = video_input.get_frame()
@@ -151,10 +157,14 @@ class Geom2D(Geom):
                 frame_count_stream += 1
                 frame = self.draw_opencv(frame)
                 video_output.write_frame(frame)
+                if progress_bar:
+                    t.update()
             else:
                 break
         video_input.close()
         video_output.close()
+        if progress_bar:
+            t.close()
         if video_input.video_parameters.frame_count is not None and int(frame_count_stream) != int(video_input.video_parameters.frame_count):
             logger.warning('Expected {} frames but got {} frames'.format(
                 int(frame_count),

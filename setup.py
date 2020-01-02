@@ -8,7 +8,8 @@ VERSION = open(os.path.join(BASEDIR, 'VERSION')).read().strip()
 BASE_DEPENDENCIES = [
     'wf-cv-utils>=0.2.0',
     'numpy>=1.17',
-    'matplotlib>=3.1.2'
+    'matplotlib>=3.1.2',
+    'tqdm>=4.41.1'
 ]
 
 # TEST_DEPENDENCIES = [
