@@ -216,7 +216,7 @@ class Circle(Geom):
 class Point(Geom):
     def __init__(
         self,
-        marker='o',
+        marker='.',
         size=6,
         line_width=1.5,
         line_color='#00ff00',
@@ -296,6 +296,14 @@ class GeomCollection2D(Geom2D, GeomCollection):
             geom_copy.coordinates = self.coordinates.take(geom_copy.coordinate_indices, 1)
             geom_copy.draw_matplotlib(axis)
 
+    def draw_opencv(self, image):
+        new_image = image.copy()
+        for geom_index, geom in enumerate(self.geom_list):
+            geom_copy = copy.deepcopy(geom)
+            geom_copy.coordinates = self.coordinates.take(geom_copy.coordinate_indices, 1)
+            new_image = geom_copy.draw_opencv(new_image)
+        return new_image
+
 class GeomCollection3D(Geom3D, GeomCollection):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -346,6 +354,20 @@ class Circle2D(Geom2D, Circle):
             facecolor=self.fill_color,
             alpha=self.alpha
         ))
+
+    def draw_opencv(self, image):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Circle2D requires coordinates to be of shape (1, 1, 2)')
+        new_image = cv_utils.draw_circle(
+            image,
+            coordinates=self.coordinates[0, 0],
+            radius=self.radius,
+            line_width=self.line_width,
+            color=self.line_color,
+            fill=self.fill,
+            alpha=self.alpha
+        )
+        return new_image
 
 class Circle3D(Geom3D, Circle):
     def __init__(self, **kwargs):
@@ -401,6 +423,20 @@ class Point2D(Geom2D, Point):
             alpha=self.alpha
         )
 
+    def draw_opencv(self, image):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Point2D requires coordinates to be of shape (1, 1, 2)')
+        new_image = cv_utils.draw_point(
+            image,
+            coordinates=self.coordinates[0, 0],
+            marker=self.marker,
+            marker_size=self.size,
+            line_width=self.line_width,
+            color=self.line_color,
+            alpha=self.alpha
+        )
+        return new_image
+
 class Point3D(Geom3D, Point):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -448,6 +484,18 @@ class Line2D(Geom2D, Line):
             color=self.color,
             alpha=self.alpha
         ))
+
+    def draw_opencv(self, image):
+        if self.coordinates.shape != (1, 2, 2):
+            raise ValueError('Draw method for Line2D requires coordinates to be of shape (1, 2, 2)')
+        new_image = cv_utils.draw_line(
+            image,
+            coordinates=self.coordinates[0],
+            line_width=self.line_width,
+            color=self.color,
+            alpha=self.alpha
+        )
+        return new_image
 
 class Line3D(Geom3D, Line):
     def __init__(self, **kwargs):
@@ -512,6 +560,20 @@ class Text2D(Geom2D, Text):
             bbox=bbox,
             clip_on=True
         )
+
+    def draw_opencv(self, image):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Text2D requires coordinates to be of shape (1, 1, 2)')
+        new_image = cv_utils.draw_text(
+            image,
+            coordinates=self.coordinates[0,0],
+            text=self.text,
+            horizontal_alignment=self.horizontal_alignment,
+            vertical_alignment=self.vertical_alignment,
+            color=self.text_color,
+            alpha=self.text_alpha
+        )
+        return new_image
 
 class Text3D(Geom3D, Text):
     def __init__(self, **kwargs):
