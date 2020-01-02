@@ -128,6 +128,36 @@ class Geom2D(Geom):
         if show:
             plt.show()
 
+    def overlay_video(
+        self,
+        input_path,
+        output_path,
+        start_time=None
+    ):
+        if self.time_index is not None:
+            raise NotImplementedError('Video overlay for geom sequences not yet implemented')
+        video_input = cv_utils.VideoInput(input_path)
+        video_output = cv_utils.VideoOutput(
+            output_path,
+            video_parameters=video_input.video_parameters
+        )
+        frame_count_stream = 0
+        while(video_input.is_opened()):
+            frame = video_input.get_frame()
+            if frame is not None:
+                frame_count_stream += 1
+                frame = self.draw_opencv(frame)
+                video_output.write_frame(frame)
+            else:
+                break
+        video_input.close()
+        video_output.close()
+        if video_input.video_parameters.frame_count is not None and int(frame_count_stream) != int(video_input.video_parameters.frame_count):
+            print('Warning. Expected {} frames but got {} frames'.format(
+                int(frame_count),
+                int(frame_count_stream)
+            ))
+
 class Geom3D(Geom):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
