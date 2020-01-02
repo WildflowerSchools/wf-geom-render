@@ -4,6 +4,9 @@ import copy
 import matplotlib.pyplot as plt
 import json
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class GeomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -153,7 +156,7 @@ class Geom2D(Geom):
         video_input.close()
         video_output.close()
         if video_input.video_parameters.frame_count is not None and int(frame_count_stream) != int(video_input.video_parameters.frame_count):
-            print('Warning. Expected {} frames but got {} frames'.format(
+            logger.warning('Expected {} frames but got {} frames'.format(
                 int(frame_count),
                 int(frame_count_stream)
             ))
