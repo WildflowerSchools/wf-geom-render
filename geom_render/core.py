@@ -58,6 +58,12 @@ class Geom:
     def to_json(self, indent=None):
         return json.dumps(self, cls=GeomJSONEncoder, indent=indent)
 
+    def get_time_slice(self, index):
+        new_geom = copy.deepcopy(self)
+        new_geom.coordinates = np.expand_dims(self.coordinates[index], axis=0)
+        new_geom.time_index = None
+        return new_geom
+
     def resample(
         self,
         new_time_index,
@@ -139,37 +145,62 @@ class Geom2D(Geom):
         start_time=None,
         progress_bar=False
     ):
-        if self.time_index is not None:
-            raise NotImplementedError('Video overlay for geom sequences not yet implemented')
-        video_input = cv_utils.VideoInput(input_path)
-        video_output = cv_utils.VideoOutput(
-            output_path,
-            video_parameters=video_input.video_parameters
+        video_input = cv_utils.VideoInput(
+            input_path=input_path,
+            start_time=start_time
         )
-        if progress_bar:
-            t = tqdm.tqdm(
-                total=video_input.video_parameters.frame_count
+        if self.time_index is not None:
+            video_time_index = video_input.video_parameters.time_index
+            if video_time_index is None:
+                raise ValueError('Video must have time index to overlay geom sequence')
+            if self.time_index[0] > video_time_index[-1]:
+                logger.warning('Beginning of geom sequence is after end of video')
+            if self.time_index[-1] < video_time_index[0]:
+                logger.warning('End of geom sequence is before beginning of video')
+            num_timestamps = len(video_time_index)
+            resampled_geom = self.resample(video_time_index)
+            video_output = cv_utils.VideoOutput(
+                output_path,
+                video_parameters=video_input.video_parameters
             )
-        frame_count_stream = 0
-        while(video_input.is_opened()):
-            frame = video_input.get_frame()
-            if frame is not None:
-                frame_count_stream += 1
-                frame = self.draw_opencv(frame)
+            if progress_bar:
+                t = tqdm.tqdm(total=num_timestamps)
+            for sequence_index in range(num_timestamps):
+                frame = video_input.get_frame()
+                if frame is None:
+                    raise ValueError('Input video ended unexpectedly at frame number {}'.format(sequence_index))
+                overlay_geom = resampled_geom.get_time_slice(sequence_index)
+                frame = overlay_geom.draw_opencv(frame)
                 video_output.write_frame(frame)
                 if progress_bar:
                     t.update()
-            else:
-                break
+        else:
+            video_output = cv_utils.VideoOutput(
+                output_path,
+                video_parameters=video_input.video_parameters
+            )
+            if progress_bar:
+                t = tqdm.tqdm(total=video_input.video_parameters.frame_count)
+            frame_count_stream = 0
+            while(video_input.is_opened()):
+                frame = video_input.get_frame()
+                if frame is not None:
+                    frame_count_stream += 1
+                    frame = self.draw_opencv(frame)
+                    video_output.write_frame(frame)
+                    if progress_bar:
+                        t.update()
+                else:
+                    break
+            if video_input.video_parameters.frame_count is not None and int(frame_count_stream) != int(video_input.video_parameters.frame_count):
+                logger.warning('Expected {} frames but got {} frames'.format(
+                    int(frame_count),
+                    int(frame_count_stream)
+                ))
         video_input.close()
         video_output.close()
         if progress_bar:
             t.close()
-        if video_input.video_parameters.frame_count is not None and int(frame_count_stream) != int(video_input.video_parameters.frame_count):
-            logger.warning('Expected {} frames but got {} frames'.format(
-                int(frame_count),
-                int(frame_count_stream)
-            ))
 
 class Geom3D(Geom):
     def __init__(self, **kwargs):
