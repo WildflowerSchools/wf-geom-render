@@ -79,17 +79,50 @@ class Geom:
             raise ValueError('New time index must be one-dimensional')
         new_time_index.sort()
         num_new_time_slices = new_time_index.shape[0]
+        if self.time_index is None:
+            new_geom = copy.deepcopy(self)
+            new_geom.time_index = new_time_index
+            print(self.coordinates)
+            print(num_new_time_slices)
+            new_geom.coordinates = np.tile(
+                self.coordinates,
+                (num_new_time_slices, 1, 1)
+            )
+            return new_geom
         coordinates_time_slice_shape = self.coordinates.shape[1:]
         new_coordinates_shape = (num_new_time_slices,) + coordinates_time_slice_shape
         new_coordinates = np.full(new_coordinates_shape, np.nan)
         old_time_index_pointer = 0
         for new_time_index_pointer in range(num_new_time_slices):
+            # print('{}: {} compared to {}: {}'.format(
+            #     new_time_index_pointer,
+            #     new_time_index[new_time_index_pointer],
+            #     old_time_index_pointer,
+            #     self.time_index[old_time_index_pointer]
+            # ))
             if new_time_index[new_time_index_pointer] < self.time_index[old_time_index_pointer]:
+                # print('New time index {} is less than current old time index {}. Skipping.'.format(
+                #     new_time_index[new_time_index_pointer],
+                #     self.time_index[old_time_index_pointer]
+                # ))
                 continue
             if new_time_index[new_time_index_pointer] > self.time_index[-1]:
+                # print('New time index {} is greater than end of old time index {}. Ending.'.format(
+                #     new_time_index[new_time_index_pointer],
+                #     self.time_index[old_time_index_pointer]
+                # ))
                 break
             while new_time_index[new_time_index_pointer] > self.time_index[old_time_index_pointer + 1]:
+                # print('New time index {} is greater than next old time index {}. Advancing old time index.'.format(
+                #     new_time_index[new_time_index_pointer],
+                #     self.time_index[old_time_index_pointer + 1]
+                # ))
                 old_time_index_pointer += 1
+            # print('New time index {} is in window of {} to {}. Processing.'.format(
+            #     new_time_index[new_time_index_pointer],
+            #     self.time_index[old_time_index_pointer],
+            #     self.time_index[old_time_index_pointer + 1]
+            # ))
             if method == 'interpolate':
                 later_slice_weight = (
                     (new_time_index[new_time_index_pointer] - self.time_index[old_time_index_pointer])/
@@ -99,10 +132,15 @@ class Geom:
             else:
                 earlier_slice_weight = 1.0
                 later_slice_weight = 0.0
-            new_coordinates[new_time_index_pointer] = (
-                earlier_slice_weight*self.coordinates[old_time_index_pointer] +
-                later_slice_weight*self.coordinates[old_time_index_pointer + 1]
-            )
+            if earlier_slice_weight == 0.0:
+                new_coordinates[new_time_index_pointer] = self.coordinates[old_time_index_pointer + 1]
+            elif later_slice_weight == 0.0:
+                new_coordinates[new_time_index_pointer] = self.coordinates[old_time_index_pointer]
+            else:
+                new_coordinates[new_time_index_pointer] = (
+                    earlier_slice_weight*self.coordinates[old_time_index_pointer] +
+                    later_slice_weight*self.coordinates[old_time_index_pointer + 1]
+                )
         new_geom = copy.deepcopy(self)
         new_geom.time_index = new_time_index
         new_geom.coordinates = new_coordinates
@@ -239,29 +277,50 @@ class GeomCollection(Geom):
         self.geom_list = geom_list
 
     @classmethod
-    def from_geom_list(cls, geom_list):
-        num_points = 0
+    def from_geom_list(cls, geom_list, method='interpolate'):
         num_spatial_dimensions = geom_list[0].coordinates.shape[-1]
+        new_num_points = 0
+        new_timestamp_set = set()
         for geom in geom_list:
-            if geom.coordinates.shape[0] != 1:
-                raise ValueError('All geoms in list must be for a single time slice')
             if geom.coordinates.shape[-1] != num_spatial_dimensions:
                 raise ValueError('All geoms in list must have the same number of spatial_dimensions')
-            num_points += geom.coordinates.shape[1]
-        new_coordinates = np.full((1, num_points, num_spatial_dimensions), np.nan)
+            if geom.time_index is not None:
+                new_timestamp_set = new_timestamp_set.union(geom.time_index)
+            new_num_points += geom.coordinates.shape[1]
+        new_time_index = None
+        new_num_time_slices = 1
+        if len(new_timestamp_set) > 0:
+            new_time_index = np.sort(np.array(list(new_timestamp_set)))
+            new_num_time_slices = new_time_index.shape[0]
+        new_coordinates = np.full((new_num_time_slices, new_num_points, num_spatial_dimensions), np.nan)
         new_geom_list = list()
-        coordinate_index = 0
+        new_coordinate_index = 0
         for geom in geom_list:
-            coordinate_indices = list()
-            for point_index in range(geom.coordinates.shape[1]):
-                new_coordinates[0, coordinate_index] = geom.coordinates[0, point_index]
-                coordinate_indices.append(coordinate_index)
-                coordinate_index += 1
-            new_geom = copy.deepcopy(geom)
-            new_geom.coordinates = None,
-            new_geom.coordinate_indices = coordinate_indices
-            new_geom_list.append(new_geom)
+            if new_time_index is not None:
+                new_geom = geom.resample(new_time_index, method)
+            else:
+                new_geom = copy.deepcopy(geom)
+            num_points = new_geom.coordinates.shape[1]
+            new_coordinates[:, new_coordinate_index : new_coordinate_index + num_points, :] = new_geom.coordinates
+            if isinstance(geom, GeomCollection):
+                for sub_geom in geom.geom_list:
+                    new_sub_geom = copy.deepcopy(sub_geom)
+                    new_sub_geom.coordinate_indices = [
+                        coordinate_index + new_coordinate_index
+                        for coordinate_index in new_sub_geom.coordinate_indices
+                    ]
+                    new_geom_list.append(new_sub_geom)
+            else:
+                new_geom.coordinates = None
+                new_geom.time_index = None
+                new_geom.coordinate_indices = [
+                    new_coordinate_index + coordinate_index
+                    for coordinate_index in range(num_points)
+                ]
+                new_geom_list.append(new_geom)
+            new_coordinate_index += num_points
         return cls(
+            time_index=new_time_index,
             coordinates=new_coordinates,
             geom_list=new_geom_list
         )
