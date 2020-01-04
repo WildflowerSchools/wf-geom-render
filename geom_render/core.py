@@ -2,8 +2,12 @@ import cv_utils
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
+import tqdm
 import json
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class GeomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -54,6 +58,12 @@ class Geom:
     def to_json(self, indent=None):
         return json.dumps(self, cls=GeomJSONEncoder, indent=indent)
 
+    def get_time_slice(self, index):
+        new_geom = copy.deepcopy(self)
+        new_geom.coordinates = np.expand_dims(self.coordinates[index], axis=0)
+        new_geom.time_index = None
+        return new_geom
+
     def resample(
         self,
         new_time_index,
@@ -69,6 +79,16 @@ class Geom:
             raise ValueError('New time index must be one-dimensional')
         new_time_index.sort()
         num_new_time_slices = new_time_index.shape[0]
+        if self.time_index is None:
+            new_geom = copy.deepcopy(self)
+            new_geom.time_index = new_time_index
+            print(self.coordinates)
+            print(num_new_time_slices)
+            new_geom.coordinates = np.tile(
+                self.coordinates,
+                (num_new_time_slices, 1, 1)
+            )
+            return new_geom
         coordinates_time_slice_shape = self.coordinates.shape[1:]
         new_coordinates_shape = (num_new_time_slices,) + coordinates_time_slice_shape
         new_coordinates = np.full(new_coordinates_shape, np.nan)
@@ -89,10 +109,15 @@ class Geom:
             else:
                 earlier_slice_weight = 1.0
                 later_slice_weight = 0.0
-            new_coordinates[new_time_index_pointer] = (
-                earlier_slice_weight*self.coordinates[old_time_index_pointer] +
-                later_slice_weight*self.coordinates[old_time_index_pointer + 1]
-            )
+            if earlier_slice_weight == 0.0:
+                new_coordinates[new_time_index_pointer] = self.coordinates[old_time_index_pointer + 1]
+            elif later_slice_weight == 0.0:
+                new_coordinates[new_time_index_pointer] = self.coordinates[old_time_index_pointer]
+            else:
+                new_coordinates[new_time_index_pointer] = (
+                    earlier_slice_weight*self.coordinates[old_time_index_pointer] +
+                    later_slice_weight*self.coordinates[old_time_index_pointer + 1]
+                )
         new_geom = copy.deepcopy(self)
         new_geom.time_index = new_time_index
         new_geom.coordinates = new_coordinates
@@ -127,6 +152,70 @@ class Geom2D(Geom):
             )
         if show:
             plt.show()
+
+    def overlay_video(
+        self,
+        input_path,
+        output_path,
+        start_time=None,
+        progress_bar=False
+    ):
+        video_input = cv_utils.VideoInput(
+            input_path=input_path,
+            start_time=start_time
+        )
+        if self.time_index is not None:
+            video_time_index = video_input.video_parameters.time_index
+            if video_time_index is None:
+                raise ValueError('Video must have time index to overlay geom sequence')
+            if self.time_index[0] > video_time_index[-1]:
+                logger.warning('Beginning of geom sequence is after end of video')
+            if self.time_index[-1] < video_time_index[0]:
+                logger.warning('End of geom sequence is before beginning of video')
+            num_timestamps = len(video_time_index)
+            resampled_geom = self.resample(video_time_index)
+            video_output = cv_utils.VideoOutput(
+                output_path,
+                video_parameters=video_input.video_parameters
+            )
+            if progress_bar:
+                t = tqdm.tqdm(total=num_timestamps)
+            for sequence_index in range(num_timestamps):
+                frame = video_input.get_frame()
+                if frame is None:
+                    raise ValueError('Input video ended unexpectedly at frame number {}'.format(sequence_index))
+                overlay_geom = resampled_geom.get_time_slice(sequence_index)
+                frame = overlay_geom.draw_opencv(frame)
+                video_output.write_frame(frame)
+                if progress_bar:
+                    t.update()
+        else:
+            video_output = cv_utils.VideoOutput(
+                output_path,
+                video_parameters=video_input.video_parameters
+            )
+            if progress_bar:
+                t = tqdm.tqdm(total=video_input.video_parameters.frame_count)
+            frame_count_stream = 0
+            while(video_input.is_opened()):
+                frame = video_input.get_frame()
+                if frame is not None:
+                    frame_count_stream += 1
+                    frame = self.draw_opencv(frame)
+                    video_output.write_frame(frame)
+                    if progress_bar:
+                        t.update()
+                else:
+                    break
+            if video_input.video_parameters.frame_count is not None and int(frame_count_stream) != int(video_input.video_parameters.frame_count):
+                logger.warning('Expected {} frames but got {} frames'.format(
+                    int(frame_count),
+                    int(frame_count_stream)
+                ))
+        video_input.close()
+        video_output.close()
+        if progress_bar:
+            t.close()
 
 class Geom3D(Geom):
     def __init__(self, **kwargs):
@@ -165,29 +254,50 @@ class GeomCollection(Geom):
         self.geom_list = geom_list
 
     @classmethod
-    def from_geom_list(cls, geom_list):
-        num_points = 0
+    def from_geom_list(cls, geom_list, method='interpolate'):
         num_spatial_dimensions = geom_list[0].coordinates.shape[-1]
+        new_num_points = 0
+        new_timestamp_set = set()
         for geom in geom_list:
-            if geom.coordinates.shape[0] != 1:
-                raise ValueError('All geoms in list must be for a single time slice')
             if geom.coordinates.shape[-1] != num_spatial_dimensions:
                 raise ValueError('All geoms in list must have the same number of spatial_dimensions')
-            num_points += geom.coordinates.shape[1]
-        new_coordinates = np.full((1, num_points, num_spatial_dimensions), np.nan)
+            if geom.time_index is not None:
+                new_timestamp_set = new_timestamp_set.union(geom.time_index)
+            new_num_points += geom.coordinates.shape[1]
+        new_time_index = None
+        new_num_time_slices = 1
+        if len(new_timestamp_set) > 0:
+            new_time_index = np.sort(np.array(list(new_timestamp_set)))
+            new_num_time_slices = new_time_index.shape[0]
+        new_coordinates = np.full((new_num_time_slices, new_num_points, num_spatial_dimensions), np.nan)
         new_geom_list = list()
-        coordinate_index = 0
+        new_coordinate_index = 0
         for geom in geom_list:
-            coordinate_indices = list()
-            for point_index in range(geom.coordinates.shape[1]):
-                new_coordinates[0, coordinate_index] = geom.coordinates[0, point_index]
-                coordinate_indices.append(coordinate_index)
-                coordinate_index += 1
-            new_geom = copy.deepcopy(geom)
-            new_geom.coordinates = None,
-            new_geom.coordinate_indices = coordinate_indices
-            new_geom_list.append(new_geom)
+            if new_time_index is not None:
+                new_geom = geom.resample(new_time_index, method)
+            else:
+                new_geom = copy.deepcopy(geom)
+            num_points = new_geom.coordinates.shape[1]
+            new_coordinates[:, new_coordinate_index : new_coordinate_index + num_points, :] = new_geom.coordinates
+            if isinstance(geom, GeomCollection):
+                for sub_geom in geom.geom_list:
+                    new_sub_geom = copy.deepcopy(sub_geom)
+                    new_sub_geom.coordinate_indices = [
+                        coordinate_index + new_coordinate_index
+                        for coordinate_index in new_sub_geom.coordinate_indices
+                    ]
+                    new_geom_list.append(new_sub_geom)
+            else:
+                new_geom.coordinates = None
+                new_geom.time_index = None
+                new_geom.coordinate_indices = [
+                    new_coordinate_index + coordinate_index
+                    for coordinate_index in range(num_points)
+                ]
+                new_geom_list.append(new_geom)
+            new_coordinate_index += num_points
         return cls(
+            time_index=new_time_index,
             coordinates=new_coordinates,
             geom_list=new_geom_list
         )
@@ -216,7 +326,7 @@ class Circle(Geom):
 class Point(Geom):
     def __init__(
         self,
-        marker='o',
+        marker='.',
         size=6,
         line_width=1.5,
         line_color='#00ff00',
@@ -255,7 +365,7 @@ class Text(Geom):
         font_style=None,
         font_weight=None,
         font_size=None,
-        text_color='#000000',
+        text_color='#00ff00',
         text_alpha=1.0,
         horizontal_alignment='center',
         vertical_alignment='bottom',
@@ -295,6 +405,14 @@ class GeomCollection2D(Geom2D, GeomCollection):
             geom_copy = copy.deepcopy(geom)
             geom_copy.coordinates = self.coordinates.take(geom_copy.coordinate_indices, 1)
             geom_copy.draw_matplotlib(axis)
+
+    def draw_opencv(self, image):
+        new_image = image.copy()
+        for geom_index, geom in enumerate(self.geom_list):
+            geom_copy = copy.deepcopy(geom)
+            geom_copy.coordinates = self.coordinates.take(geom_copy.coordinate_indices, 1)
+            new_image = geom_copy.draw_opencv(new_image)
+        return new_image
 
 class GeomCollection3D(Geom3D, GeomCollection):
     def __init__(self, **kwargs):
@@ -346,6 +464,22 @@ class Circle2D(Geom2D, Circle):
             facecolor=self.fill_color,
             alpha=self.alpha
         ))
+
+    def draw_opencv(self, image):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Circle2D requires coordinates to be of shape (1, 1, 2)')
+        if np.any(np.isnan(self.coordinates)):
+            return image
+        new_image = cv_utils.draw_circle(
+            image,
+            coordinates=self.coordinates[0, 0],
+            radius=self.radius,
+            line_width=self.line_width,
+            color=self.line_color,
+            fill=self.fill,
+            alpha=self.alpha
+        )
+        return new_image
 
 class Circle3D(Geom3D, Circle):
     def __init__(self, **kwargs):
@@ -401,6 +535,22 @@ class Point2D(Geom2D, Point):
             alpha=self.alpha
         )
 
+    def draw_opencv(self, image):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Point2D requires coordinates to be of shape (1, 1, 2)')
+        if np.any(np.isnan(self.coordinates)):
+            return image
+        new_image = cv_utils.draw_point(
+            image,
+            coordinates=self.coordinates[0, 0],
+            marker=self.marker,
+            marker_size=self.size,
+            line_width=self.line_width,
+            color=self.line_color,
+            alpha=self.alpha
+        )
+        return new_image
+
 class Point3D(Geom3D, Point):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -448,6 +598,20 @@ class Line2D(Geom2D, Line):
             color=self.color,
             alpha=self.alpha
         ))
+
+    def draw_opencv(self, image):
+        if self.coordinates.shape != (1, 2, 2):
+            raise ValueError('Draw method for Line2D requires coordinates to be of shape (1, 2, 2)')
+        if np.any(np.isnan(self.coordinates)):
+            return image
+        new_image = cv_utils.draw_line(
+            image,
+            coordinates=self.coordinates[0],
+            line_width=self.line_width,
+            color=self.color,
+            alpha=self.alpha
+        )
+        return new_image
 
 class Line3D(Geom3D, Line):
     def __init__(self, **kwargs):
@@ -512,6 +676,22 @@ class Text2D(Geom2D, Text):
             bbox=bbox,
             clip_on=True
         )
+
+    def draw_opencv(self, image):
+        if self.coordinates.shape != (1, 1, 2):
+            raise ValueError('Draw method for Text2D requires coordinates to be of shape (1, 1, 2)')
+        if np.any(np.isnan(self.coordinates)):
+            return image
+        new_image = cv_utils.draw_text(
+            image,
+            coordinates=self.coordinates[0,0],
+            text=self.text,
+            horizontal_alignment=self.horizontal_alignment,
+            vertical_alignment=self.vertical_alignment,
+            color=self.text_color,
+            alpha=self.text_alpha
+        )
+        return new_image
 
 class Text3D(Geom3D, Text):
     def __init__(self, **kwargs):
