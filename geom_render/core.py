@@ -94,35 +94,12 @@ class Geom:
         new_coordinates = np.full(new_coordinates_shape, np.nan)
         old_time_index_pointer = 0
         for new_time_index_pointer in range(num_new_time_slices):
-            # print('{}: {} compared to {}: {}'.format(
-            #     new_time_index_pointer,
-            #     new_time_index[new_time_index_pointer],
-            #     old_time_index_pointer,
-            #     self.time_index[old_time_index_pointer]
-            # ))
             if new_time_index[new_time_index_pointer] < self.time_index[old_time_index_pointer]:
-                # print('New time index {} is less than current old time index {}. Skipping.'.format(
-                #     new_time_index[new_time_index_pointer],
-                #     self.time_index[old_time_index_pointer]
-                # ))
                 continue
             if new_time_index[new_time_index_pointer] > self.time_index[-1]:
-                # print('New time index {} is greater than end of old time index {}. Ending.'.format(
-                #     new_time_index[new_time_index_pointer],
-                #     self.time_index[old_time_index_pointer]
-                # ))
                 break
             while new_time_index[new_time_index_pointer] > self.time_index[old_time_index_pointer + 1]:
-                # print('New time index {} is greater than next old time index {}. Advancing old time index.'.format(
-                #     new_time_index[new_time_index_pointer],
-                #     self.time_index[old_time_index_pointer + 1]
-                # ))
                 old_time_index_pointer += 1
-            # print('New time index {} is in window of {} to {}. Processing.'.format(
-            #     new_time_index[new_time_index_pointer],
-            #     self.time_index[old_time_index_pointer],
-            #     self.time_index[old_time_index_pointer + 1]
-            # ))
             if method == 'interpolate':
                 later_slice_weight = (
                     (new_time_index[new_time_index_pointer] - self.time_index[old_time_index_pointer])/
