@@ -67,7 +67,8 @@ class Geom:
     def resample(
         self,
         new_time_index,
-        method='interpolate'
+        method='interpolate',
+        progress_bar=False
     ):
         if method not in ['interpolate', 'fill']:
             raise ValueError('Available resampling methods are \'interpolate\' and \'fill\'')
@@ -93,11 +94,18 @@ class Geom:
         new_coordinates_shape = (num_new_time_slices,) + coordinates_time_slice_shape
         new_coordinates = np.full(new_coordinates_shape, np.nan)
         old_time_index_pointer = 0
-        for new_time_index_pointer in range(num_new_time_slices):
+        logger.debug('Resampling from {} time slices to {} time slices'.format(
+            self.time_index.shape[0],
+            num_new_time_slices
+        ))
+        new_time_index_iterable = range(num_new_time_slices)
+        if progress_bar:
+            new_time_index_iterable = tqdm.tqdm_notebook(new_time_index_iterable)
+        for new_time_index_pointer in new_time_index_iterable:
             if new_time_index[new_time_index_pointer] < self.time_index[old_time_index_pointer]:
                 continue
             if new_time_index[new_time_index_pointer] > self.time_index[-1]:
-                break
+                continue
             while new_time_index[new_time_index_pointer] > self.time_index[old_time_index_pointer + 1]:
                 old_time_index_pointer += 1
             if method == 'interpolate':
@@ -179,7 +187,7 @@ class Geom2D(Geom):
                 video_parameters=video_input.video_parameters
             )
             if progress_bar:
-                t = tqdm.tqdm(total=num_timestamps)
+                t = tqdm.tqdm_notebook(total=num_timestamps)
             for sequence_index in range(num_timestamps):
                 frame = video_input.get_frame()
                 if frame is None:
@@ -195,7 +203,7 @@ class Geom2D(Geom):
                 video_parameters=video_input.video_parameters
             )
             if progress_bar:
-                t = tqdm.tqdm(total=video_input.video_parameters.frame_count)
+                t = tqdm.tqdm_notebook(total=video_input.video_parameters.frame_count)
             frame_count_stream = 0
             while(video_input.is_opened()):
                 frame = video_input.get_frame()
@@ -254,7 +262,12 @@ class GeomCollection(Geom):
         self.geom_list = geom_list
 
     @classmethod
-    def from_geom_list(cls, geom_list, method='interpolate'):
+    def from_geom_list(
+        cls,
+        geom_list,
+        method='interpolate',
+        progress_bar=False
+    ):
         num_spatial_dimensions = geom_list[0].coordinates.shape[-1]
         new_num_points = 0
         new_timestamp_set = set()
@@ -272,9 +285,11 @@ class GeomCollection(Geom):
         new_coordinates = np.full((new_num_time_slices, new_num_points, num_spatial_dimensions), np.nan)
         new_geom_list = list()
         new_coordinate_index = 0
+        if progress_bar:
+            geom_list = tqdm.tqdm_notebook(geom_list)
         for geom in geom_list:
             if new_time_index is not None:
-                new_geom = geom.resample(new_time_index, method)
+                new_geom = geom.resample(new_time_index, method, progress_bar)
             else:
                 new_geom = copy.deepcopy(geom)
             num_points = new_geom.coordinates.shape[1]
