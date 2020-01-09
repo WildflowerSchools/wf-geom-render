@@ -6,6 +6,7 @@ import tqdm
 import json
 import datetime
 import logging
+from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,8 @@ class Geom:
         time_index=None,
         start_time=None,
         frames_per_second=None,
-        num_frames=None
+        num_frames=None,
+        id=None
     ):
         if coordinates is not None:
             try:
@@ -68,12 +70,15 @@ class Geom:
             pass
         else:
             raise ValueError('Must specify time index or all of start time/fps/number of frames or neither')
+        if id is None:
+            id = uuid4().hex
         self.coordinates = coordinates
         self.coordinate_indices = coordinate_indices
         self.time_index = time_index
         self.start_time = start_time
         self.frames_per_second = frames_per_second
         self.num_frames = num_frames
+        self.id = id
 
     def to_json(self, indent=None):
         return json.dumps(self, cls=GeomJSONEncoder, indent=indent)
@@ -561,7 +566,8 @@ class Circle3D(Geom3D, Circle):
             line_width=self.line_width,
             color=self.color,
             fill=self.fill,
-            alpha=self.alpha
+            alpha=self.alpha,
+            id=self.id
         )
 
 
@@ -629,7 +635,8 @@ class Point3D(Geom3D, Point):
             marker=self.marker,
             size=self.size,
             color=self.color,
-            alpha=self.alpha
+            alpha=self.alpha,
+            id=self.id
         )
 
 
@@ -690,7 +697,8 @@ class Line3D(Geom3D, Line):
             num_frames=self.num_frames,
             line_width=self.line_width,
             color=self.color,
-            alpha=self.alpha
+            alpha=self.alpha,
+            id=self.id
         )
 
 class Text2D(Geom2D, Text):
@@ -759,5 +767,6 @@ class Text3D(Geom3D, Text):
             color=self.color,
             alpha=self.alpha,
             horizontal_alignment=self.horizontal_alignment,
-            vertical_alignment=self.vertical_alignment
+            vertical_alignment=self.vertical_alignment,
+            id=self.id
         )
