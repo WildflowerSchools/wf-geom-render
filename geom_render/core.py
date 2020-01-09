@@ -35,6 +35,8 @@ class Geom:
         start_time=None,
         frames_per_second=None,
         num_frames=None,
+        frame_width=None,
+        frame_height=None,
         id=None
     ):
         if coordinates is not None:
@@ -78,6 +80,8 @@ class Geom:
         self.start_time = start_time
         self.frames_per_second = frames_per_second
         self.num_frames = num_frames
+        self.frame_width = frame_width
+        self.frame_height = frame_height
         self.id = id
 
     def to_json(self, indent=None):
@@ -183,7 +187,10 @@ class Geom:
         return new_geom
 
 class Geom2D(Geom):
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         if self.coordinates is not None and self.coordinates.shape[-1] != 2:
             raise ValueError('For 2D geoms, size of last dimension must be 2')
@@ -321,11 +328,17 @@ class GeomCollection(Geom):
         progress_bar=False
     ):
         num_spatial_dimensions = geom_list[0].coordinates.shape[-1]
+        frame_width = geom_list[0].frame_width
+        frame_height = geom_list[0].frame_height
         new_num_points = 0
         new_timestamp_set = set()
         for geom in geom_list:
             if geom.coordinates.shape[-1] != num_spatial_dimensions:
                 raise ValueError('All geoms in list must have the same number of spatial_dimensions')
+            if geom.frame_width is not None and geom_frame_width != frame_width:
+                raise ValueError('All geoms in list must have the same frame width (if specified)')
+            if geom.frame_height is not None and geom_frame_height != frame_height:
+                raise ValueError('All geoms in list must have the same frame height (if specified)')
             if geom.time_index is not None and geom.start_time is None and geom.frames_per_second is None and geom.num_frames is None:
                 new_timestamp_set = new_timestamp_set.union(geom.time_index)
             elif geom.time_index is None and geom.start_time is not None and geom.frames_per_second is not None and geom.num_frames is not None:
@@ -375,6 +388,8 @@ class GeomCollection(Geom):
                 new_geom.start_time = None
                 new_geom.frames_per_second = None
                 new_geom.num_frames = None
+                new_geom.frame_width = None
+                new_geom.frame_height = None
                 new_geom.coordinate_indices = [
                     new_coordinate_index + coordinate_index
                     for coordinate_index in range(num_points)
@@ -384,7 +399,9 @@ class GeomCollection(Geom):
         return cls(
             time_index=new_time_index,
             coordinates=new_coordinates,
-            geom_list=new_geom_list
+            geom_list=new_geom_list,
+            frame_width=frame_width,
+            frame_height=frame_height
         )
 
 class Circle(Geom):
@@ -476,7 +493,9 @@ class GeomCollection3D(Geom3D, GeomCollection):
         rotation_vector,
         translation_vector,
         camera_matrix,
-        distortion_coefficients
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None
     ):
         new_coordinates=None
         if self.coordinates is not None:
@@ -500,7 +519,9 @@ class GeomCollection3D(Geom3D, GeomCollection):
             time_index=self.time_index,
             start_time=self.start_time,
             frames_per_second=self.frames_per_second,
-            num_frames=self.num_frames
+            num_frames=self.num_frames,
+            frame_width=frame_width,
+            frame_height=frame_height
         )
 
 class Circle2D(Geom2D, Circle):
@@ -545,7 +566,9 @@ class Circle3D(Geom3D, Circle):
         rotation_vector,
         translation_vector,
         camera_matrix,
-        distortion_coefficients
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None
     ):
         new_coordinates=None
         if self.coordinates is not None:
@@ -567,7 +590,9 @@ class Circle3D(Geom3D, Circle):
             color=self.color,
             fill=self.fill,
             alpha=self.alpha,
-            id=self.id
+            id=self.id,
+            frame_width=frame_width,
+            frame_height=frame_height
         )
 
 
@@ -615,7 +640,9 @@ class Point3D(Geom3D, Point):
         rotation_vector,
         translation_vector,
         camera_matrix,
-        distortion_coefficients
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None
     ):
         new_coordinates=None
         if self.coordinates is not None:
@@ -636,7 +663,9 @@ class Point3D(Geom3D, Point):
             size=self.size,
             color=self.color,
             alpha=self.alpha,
-            id=self.id
+            id=self.id,
+            frame_width=frame_width,
+            frame_height=frame_height
         )
 
 
@@ -678,7 +707,9 @@ class Line3D(Geom3D, Line):
         rotation_vector,
         translation_vector,
         camera_matrix,
-        distortion_coefficients
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None
     ):
         new_coordinates=None
         if self.coordinates is not None:
@@ -698,7 +729,9 @@ class Line3D(Geom3D, Line):
             line_width=self.line_width,
             color=self.color,
             alpha=self.alpha,
-            id=self.id
+            id=self.id,
+            frame_width=frame_width,
+            frame_height=frame_height
         )
 
 class Text2D(Geom2D, Text):
@@ -746,7 +779,9 @@ class Text3D(Geom3D, Text):
         rotation_vector,
         translation_vector,
         camera_matrix,
-        distortion_coefficients
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None
     ):
         new_coordinates=None
         if self.coordinates is not None:
@@ -768,5 +803,7 @@ class Text3D(Geom3D, Text):
             alpha=self.alpha,
             horizontal_alignment=self.horizontal_alignment,
             vertical_alignment=self.vertical_alignment,
-            id=self.id
+            id=self.id,
+            frame_width=frame_width,
+            frame_height=frame_height
         )
