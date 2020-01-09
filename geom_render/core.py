@@ -16,6 +16,10 @@ class GeomJSONEncoder(json.JSONEncoder):
             obj_dict['geom_type'] = obj.__class__.__name__
             return obj_dict
         if isinstance(obj, np.ndarray):
+            try:
+                obj = np.where(np.isnan(obj), None, obj)
+            except:
+                pass
             return obj.tolist()
         if isinstance(obj, datetime.datetime):
             return(obj.astimezone(datetime.timezone.utc).isoformat())
