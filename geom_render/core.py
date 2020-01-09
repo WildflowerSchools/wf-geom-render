@@ -82,6 +82,9 @@ class Geom:
         new_geom = copy.deepcopy(self)
         new_geom.coordinates = np.expand_dims(self.coordinates[index], axis=0)
         new_geom.time_index = None
+        new_geom.start_time = None
+        new_geom.frames_per_second = None
+        new_geom.num_frames = None
         return new_geom
 
     def resample(
@@ -215,27 +218,28 @@ class Geom2D(Geom):
             input_path=input_path,
             start_time=start_time
         )
-        if self.time_index is not None:
-            video_time_index = video_input.video_parameters.time_index
-            if video_time_index is None:
-                raise ValueError('Video must have time index to overlay geom sequence')
-            if self.time_index[0] > video_time_index[-1]:
-                logger.warning('Beginning of geom sequence is after end of video')
-            if self.time_index[-1] < video_time_index[0]:
-                logger.warning('End of geom sequence is before beginning of video')
-            num_timestamps = len(video_time_index)
-            resampled_geom = self.resample(video_time_index)
+        if self.time_index is not None or self.start_time is not None or self.frames_per_second is not None or self.num_frames is not None:
+            video_start_time = video_input.video_parameters.start_time
+            video_fps = video_input.video_parameters.fps
+            video_frame_count = video_input.video_parameters.frame_count
+            if video_start_time is None or video_fps is None or video_frame_count is None:
+                raise ValueError('Video must have start time, FPS, and frame count info to overlay geom sequence')
+            resampled_geom = self.resample(
+                new_start_time=video_start_time,
+                new_frames_per_second=video_fps,
+                new_num_frames=video_frame_count
+            )
             video_output = cv_utils.VideoOutput(
                 output_path,
                 video_parameters=video_input.video_parameters
             )
             if progress_bar:
-                t = tqdm.tqdm_notebook(total=num_timestamps)
-            for sequence_index in range(num_timestamps):
+                t = tqdm.tqdm_notebook(total=video_frame_count)
+            for frame_index in range(video_frame_count):
                 frame = video_input.get_frame()
                 if frame is None:
-                    raise ValueError('Input video ended unexpectedly at frame number {}'.format(sequence_index))
-                overlay_geom = resampled_geom.get_time_slice(sequence_index)
+                    raise ValueError('Input video ended unexpectedly at frame number {}'.format(frame_index))
+                overlay_geom = resampled_geom.get_time_slice(frame_index)
                 frame = overlay_geom.draw_opencv(frame)
                 video_output.write_frame(frame)
                 if progress_bar:
