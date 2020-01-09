@@ -326,20 +326,16 @@ class Circle(Geom):
         self,
         radius=6,
         line_width=1.5,
-        line_style='solid',
-        line_color='#00ff00',
+        color='#00ff00',
         fill=True,
-        fill_color='#00ff00',
         alpha=1.0,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.radius = radius
         self.line_width = line_width
-        self.line_style = line_style
-        self.line_color=line_color
+        self.color=color
         self.fill = fill
-        self.fill_color=fill_color
         self.alpha=alpha
 
 class Point(Geom):
@@ -347,32 +343,26 @@ class Point(Geom):
         self,
         marker='.',
         size=6,
-        line_width=1.5,
-        line_color='#00ff00',
-        fill_color='#00ff00',
+        color='#00ff00',
         alpha=1.0,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.marker = marker
         self.size = size
-        self.line_width=line_width
-        self.line_color=line_color
-        self.fill_color=fill_color
+        self.color=color
         self.alpha=alpha
 
 class Line(Geom):
     def __init__(
         self,
         line_width=1.5,
-        line_style='solid',
         color='#00ff00',
         alpha=1.0,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.line_width = line_width
-        self.line_style = line_style
         self.color=color
         self.alpha=alpha
 
@@ -380,40 +370,18 @@ class Text(Geom):
     def __init__(
         self,
         text=None,
-        font_family=None,
-        font_style=None,
-        font_weight=None,
-        font_size=None,
-        text_color='#00ff00',
-        text_alpha=1.0,
+        color='#00ff00',
+        alpha=1.0,
         horizontal_alignment='center',
         vertical_alignment='bottom',
-        box=False,
-        box_line_width=1.5,
-        box_line_style='solid',
-        box_line_color='#000000',
-        box_fill=False,
-        box_fill_color='#ffff00',
-        box_alpha=1.0,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.text = text
-        self.font_family = font_family
-        self.font_style = font_style
-        self.font_weight = font_weight
-        self.font_size = font_size
-        self.text_color = text_color
-        self.text_alpha = text_alpha
+        self.color = color
+        self.alpha = alpha
         self.horizontal_alignment = horizontal_alignment
         self.vertical_alignment = vertical_alignment
-        self.box = box
-        self.box_line_color = box_line_color
-        self.box_fill = box_fill
-        self.box_fill_color = box_fill_color
-        self.box_alpha = box_alpha
-        self.box_line_width = box_line_width
-        self.box_line_style = box_line_style
 
 class GeomCollection2D(Geom2D, GeomCollection):
     def __init__(self, **kwargs):
@@ -477,10 +445,9 @@ class Circle2D(Geom2D, Circle):
             xy=self.coordinates[0, 0, :],
             radius=self.radius,
             linewidth=self.line_width,
-            linestyle=self.line_style,
-            edgecolor=self.line_color,
+            edgecolor=self.color,
             fill=self.fill,
-            facecolor=self.fill_color,
+            facecolor=self.color,
             alpha=self.alpha
         ))
 
@@ -525,10 +492,8 @@ class Circle3D(Geom3D, Circle):
             time_index=self.time_index,
             radius=self.radius,
             line_width=self.line_width,
-            line_style=self.line_style,
-            line_color=self.line_color,
+            color=self.color,
             fill=self.fill,
-            fill_color=self.fill_color,
             alpha=self.alpha
         )
 
@@ -548,9 +513,8 @@ class Point2D(Geom2D, Point):
             self.coordinates[0, 0, 1],
             marker=self.marker,
             s=s,
-            linewidths=self.line_width,
-            edgecolors=self.line_color,
-            color=self.fill_color,
+            edgecolors=self.color,
+            color=self.color,
             alpha=self.alpha
         )
 
@@ -564,8 +528,7 @@ class Point2D(Geom2D, Point):
             coordinates=self.coordinates[0, 0],
             marker=self.marker,
             marker_size=self.size,
-            line_width=self.line_width,
-            color=self.line_color,
+            color=self.color,
             alpha=self.alpha
         )
         return new_image
@@ -595,9 +558,7 @@ class Point3D(Geom3D, Point):
             time_index=self.time_index,
             marker=self.marker,
             size=self.size,
-            line_width=self.line_width,
-            line_color=self.line_color,
-            fill_color=self.fill_color,
+            color=self.color,
             alpha=self.alpha
         )
 
@@ -613,7 +574,6 @@ class Line2D(Geom2D, Line):
             (self.coordinates[0, 0, 0], self.coordinates[0, 1,0]),
             (self.coordinates[0, 0, 1], self.coordinates[0, 1, 1]),
             linewidth=self.line_width,
-            linestyle=self.line_style,
             color=self.color,
             alpha=self.alpha
         ))
@@ -656,7 +616,6 @@ class Line3D(Geom3D, Line):
             coordinate_indices=self.coordinate_indices,
             time_index=self.time_index,
             line_width=self.line_width,
-            line_style=self.line_style,
             color=self.color,
             alpha=self.alpha
         )
@@ -670,29 +629,14 @@ class Text2D(Geom2D, Text):
             raise ValueError('Draw method for Text2D requires coordinates to be of shape (1, 1, 2)')
         if np.any(np.isnan(self.coordinates)):
             return
-        bbox = None
-        if self.box:
-            bbox = {
-                'edgecolor': self.box_line_color,
-                'fill': self.box_fill,
-                'facecolor': self.box_fill_color,
-                'alpha': self.box_alpha,
-                'linewidth': self.box_line_width,
-                'linestyle': self.box_line_style
-            }
         axis.text(
             self.coordinates[0, 0, 0],
             self.coordinates[0, 0, 1],
             self.text,
-            fontfamily=self.font_family,
-            fontstyle=self.font_style,
-            fontweight=self.font_weight,
-            fontsize=self.font_size,
-            color=self.text_color,
-            alpha=self.text_alpha,
+            color=self.color,
+            alpha=self.alpha,
             horizontalalignment=self.horizontal_alignment,
             verticalalignment=self.vertical_alignment,
-            bbox=bbox,
             clip_on=True
         )
 
@@ -707,8 +651,8 @@ class Text2D(Geom2D, Text):
             text=self.text,
             horizontal_alignment=self.horizontal_alignment,
             vertical_alignment=self.vertical_alignment,
-            color=self.text_color,
-            alpha=self.text_alpha
+            color=self.color,
+            alpha=self.alpha
         )
         return new_image
 
@@ -736,19 +680,8 @@ class Text3D(Geom3D, Text):
             coordinate_indices=self.coordinate_indices,
             time_index=self.time_index,
             text=self.text,
-            font_family=self.font_family,
-            font_style=self.font_style,
-            font_weight=self.font_weight,
-            font_size=self.font_size,
-            text_color=self.text_color,
-            text_alpha=self.text_alpha,
+            color=self.color,
+            alpha=self.alpha,
             horizontal_alignment=self.horizontal_alignment,
-            vertical_alignment=self.vertical_alignment,
-            box=self.box,
-            box_line_width=self.box_line_width,
-            box_line_style=self.box_line_style,
-            box_line_color=self.box_line_color,
-            box_fill=self.box_fill,
-            box_fill_color=self.box_fill_color,
-            box_alpha=self.box_alpha
+            vertical_alignment=self.vertical_alignment
         )
