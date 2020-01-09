@@ -30,7 +30,10 @@ class Geom:
         self,
         coordinates=None,
         coordinate_indices=None,
-        time_index=None
+        time_index=None,
+        start_time=None,
+        frames_per_second=None,
+        num_frames=None
     ):
         if coordinates is not None:
             try:
@@ -41,23 +44,36 @@ class Geom:
                 raise ValueError('Coordinates for geom must be of dimension 3 or less')
             while coordinates.ndim < 3:
                 coordinates = np.expand_dims(coordinates, axis=0)
-        if time_index is not None:
+        if time_index is not None and start_time is None and frames_per_second is None and num_frames is None:
+            # Ragged time index
             try:
                 time_index = np.array(time_index)
             except:
                 raise ValueError('Time index must be array-like')
             if time_index.ndim != 1:
                 raise ValueError('Time index must be one-dimensional')
-            num_time_slices = time_index.shape[0]
             time_index_sort_order = np.argsort(time_index)
             time_index = time_index[time_index_sort_order]
+            calculated_num_frames = time_index.shape[0]
             if coordinates is not None:
-                if coordinates.shape[0] != num_time_slices:
+                if coordinates.shape[0] != calculated_num_frames:
                     raise ValueError('First dimension of coordinates array must be of same length as time index')
                 coordinates = coordinates.take(time_index_sort_order, axis=0)
+        elif time_index is None and start_time is not None and frames_per_second is not None and num_frames is not None:
+            # Regular time index
+            frames_per_second = float(frames_per_second)
+            num_frames = int(round(num_frames))
+        elif time_index is None and start_time is None and frames_per_second is None and num_frames is None:
+            # No time index
+            pass
+        else:
+            raise ValueError('Must specify time index or all of start time/fps/number of frames or neither')
         self.coordinates = coordinates
         self.coordinate_indices = coordinate_indices
         self.time_index = time_index
+        self.start_time = start_time
+        self.frames_per_second = frames_per_second
+        self.num_frames = num_frames
 
     def to_json(self, indent=None):
         return json.dumps(self, cls=GeomJSONEncoder, indent=indent)
@@ -70,52 +86,72 @@ class Geom:
 
     def resample(
         self,
-        new_time_index,
+        new_time_index=None,
+        new_start_time=None,
+        new_frames_per_second=None,
+        new_num_frames=None,
         method='interpolate',
         progress_bar=False
     ):
         if method not in ['interpolate', 'fill']:
             raise ValueError('Available resampling methods are \'interpolate\' and \'fill\'')
-        try:
-            new_time_index = np.array(new_time_index)
-        except:
-            raise ValueError('New time index must be array-like')
-        if new_time_index.ndim != 1:
-            raise ValueError('New time index must be one-dimensional')
-        new_time_index.sort()
-        num_new_time_slices = new_time_index.shape[0]
-        if self.time_index is None:
+        if new_time_index is not None and new_start_time is None and new_frames_per_second is None and new_num_frames is None:
+            # New ragged time index
+            try:
+                new_time_index = np.array(new_time_index)
+            except:
+                raise ValueError('New time index must be array-like')
+            if new_time_index.ndim != 1:
+                raise ValueError('New time index must be one-dimensional')
+            new_time_index.sort()
+            calculated_new_num_frames = new_time_index.shape[0]
+            calculated_new_time_index = new_time_index
+        elif new_time_index is None and new_start_time is not None and new_frames_per_second is not None and new_num_frames is not None:
+            # New regular time index
+            new_frames_per_second = float(new_frames_per_second)
+            new_num_frames = int(round(new_num_frames))
+            new_time_between_frames = datetime.timedelta(microseconds = int(round(10**6/new_frames_per_second)))
+            calculated_new_time_index = [new_start_time + i*new_time_between_frames for i in range(new_num_frames)]
+            calculated_new_num_frames = new_num_frames
+        else:
+            raise ValueError('Must specify time index or all of start time/fps/number of frames')
+        if self.time_index is None and self.start_time is None and self.frames_per_second is None and self.num_frames is None:
+            # No old time index
             new_geom = copy.deepcopy(self)
             new_geom.time_index = new_time_index
-            print(self.coordinates)
-            print(num_new_time_slices)
+            new_geom.start_time = new_start_time
+            new_geom.frames_per_second = new_frames_per_second
+            new_geom.num_frames = new_num_frames
             new_geom.coordinates = np.tile(
                 self.coordinates,
-                (num_new_time_slices, 1, 1)
+                (calculated_new_num_frames, 1, 1)
             )
             return new_geom
+        elif self.time_index is None and self.start_time is not None and self.frames_per_second is not None and self.num_frames is not None:
+            old_time_between_frames = datetime.timedelta(microseconds = int(round(10**6/self.frames_per_second)))
+            old_time_index = [self.start_time + i*old_time_between_frames for i in range(self.num_frames)]
+        elif self.time_index is not None and self.start_time is None and self.frames_per_second is None and self.num_frames is None:
+            old_time_index = self.time_index
+        else:
+            raise ValueError('Current time index is malformed. Must include time index or all of start time/fps/number of frames or neither.')
         coordinates_time_slice_shape = self.coordinates.shape[1:]
-        new_coordinates_shape = (num_new_time_slices,) + coordinates_time_slice_shape
+        new_coordinates_shape = (calculated_new_num_frames,) + coordinates_time_slice_shape
         new_coordinates = np.full(new_coordinates_shape, np.nan)
         old_time_index_pointer = 0
-        logger.debug('Resampling from {} time slices to {} time slices'.format(
-            self.time_index.shape[0],
-            num_new_time_slices
-        ))
-        new_time_index_iterable = range(num_new_time_slices)
+        new_time_index_iterable = range(calculated_new_num_frames)
         if progress_bar:
             new_time_index_iterable = tqdm.tqdm_notebook(new_time_index_iterable)
         for new_time_index_pointer in new_time_index_iterable:
-            if new_time_index[new_time_index_pointer] < self.time_index[old_time_index_pointer]:
+            if calculated_new_time_index[new_time_index_pointer] < old_time_index[old_time_index_pointer]:
                 continue
-            if new_time_index[new_time_index_pointer] > self.time_index[-1]:
+            if calculated_new_time_index[new_time_index_pointer] > old_time_index[-1]:
                 continue
-            while new_time_index[new_time_index_pointer] > self.time_index[old_time_index_pointer + 1]:
+            while calculated_new_time_index[new_time_index_pointer] > old_time_index[old_time_index_pointer + 1]:
                 old_time_index_pointer += 1
             if method == 'interpolate':
                 later_slice_weight = (
-                    (new_time_index[new_time_index_pointer] - self.time_index[old_time_index_pointer])/
-                    (self.time_index[old_time_index_pointer + 1] - self.time_index[old_time_index_pointer])
+                    (calculated_new_time_index[new_time_index_pointer] - old_time_index[old_time_index_pointer])/
+                    (old_time_index[old_time_index_pointer + 1] - old_time_index[old_time_index_pointer])
                 )
                 earlier_slice_weight = 1.0 - later_slice_weight
             else:
@@ -132,6 +168,9 @@ class Geom:
                 )
         new_geom = copy.deepcopy(self)
         new_geom.time_index = new_time_index
+        new_geom.start_time = new_start_time
+        new_geom.frames_per_second = new_frames_per_second
+        new_geom.num_frames = new_num_frames
         new_geom.coordinates = new_coordinates
         return new_geom
 
@@ -278,22 +317,37 @@ class GeomCollection(Geom):
         for geom in geom_list:
             if geom.coordinates.shape[-1] != num_spatial_dimensions:
                 raise ValueError('All geoms in list must have the same number of spatial_dimensions')
-            if geom.time_index is not None:
+            if geom.time_index is not None and geom.start_time is None and geom.frames_per_second is None and geom.num_frames is None:
                 new_timestamp_set = new_timestamp_set.union(geom.time_index)
+            elif geom.time_index is None and geom.start_time is not None and geom.frames_per_second is not None and geom.num_frames is not None:
+                time_between_frames = datetime.timedelta(microseconds = int(round(10**6/geom.frames_per_second)))
+                calculated_time_index = [geom.start_time + i*time_between_frames for i in range(geom.num_frames)]
+                new_timestamp_set = new_timestamp_set.union(calculated_time_index)
+            elif geom.time_index is None and geom.start_time is None and geom.frames_per_second is None and geom.num_frames is None:
+                pass
+            else:
+                raise ValueError('One of the geoms in the list has a malformed time index. Must include time index or all of start time/fps/number of frames or neither')
             new_num_points += geom.coordinates.shape[1]
         new_time_index = None
-        new_num_time_slices = 1
+        new_start_time = None
+        new_frames_per_second = None
+        new_num_frames = None
+        new_calculated_num_frames = 1
         if len(new_timestamp_set) > 0:
             new_time_index = np.sort(np.array(list(new_timestamp_set)))
-            new_num_time_slices = new_time_index.shape[0]
-        new_coordinates = np.full((new_num_time_slices, new_num_points, num_spatial_dimensions), np.nan)
+            new_calculated_num_frames = new_time_index.shape[0]
+        new_coordinates = np.full((new_calculated_num_frames, new_num_points, num_spatial_dimensions), np.nan)
         new_geom_list = list()
         new_coordinate_index = 0
         if progress_bar:
             geom_list = tqdm.tqdm_notebook(geom_list)
         for geom in geom_list:
             if new_time_index is not None:
-                new_geom = geom.resample(new_time_index, method, progress_bar)
+                new_geom = geom.resample(
+                    new_time_index=new_time_index,
+                    method=method,
+                    progress_bar=progress_bar
+                )
             else:
                 new_geom = copy.deepcopy(geom)
             num_points = new_geom.coordinates.shape[1]
@@ -309,6 +363,9 @@ class GeomCollection(Geom):
             else:
                 new_geom.coordinates = None
                 new_geom.time_index = None
+                new_geom.start_time = None
+                new_geom.frames_per_second = None
+                new_geom.num_frames = None
                 new_geom.coordinate_indices = [
                     new_coordinate_index + coordinate_index
                     for coordinate_index in range(num_points)
@@ -431,7 +488,10 @@ class GeomCollection3D(Geom3D, GeomCollection):
         return GeomCollection2D(
             coordinates=new_coordinates,
             geom_list=new_geom_list,
-            time_index=self.time_index
+            time_index=self.time_index,
+            start_time=self.start_time,
+            frames_per_second=self.frames_per_second,
+            num_frames=self.num_frames
         )
 
 class Circle2D(Geom2D, Circle):
@@ -490,6 +550,9 @@ class Circle3D(Geom3D, Circle):
             coordinates=new_coordinates,
             coordinate_indices=self.coordinate_indices,
             time_index=self.time_index,
+            start_time=self.start_time,
+            frames_per_second=self.frames_per_second,
+            num_frames=self.num_frames,
             radius=self.radius,
             line_width=self.line_width,
             color=self.color,
@@ -556,6 +619,9 @@ class Point3D(Geom3D, Point):
             coordinates=new_coordinates,
             coordinate_indices=self.coordinate_indices,
             time_index=self.time_index,
+            start_time=self.start_time,
+            frames_per_second=self.frames_per_second,
+            num_frames=self.num_frames,
             marker=self.marker,
             size=self.size,
             color=self.color,
@@ -615,6 +681,9 @@ class Line3D(Geom3D, Line):
             coordinates=new_coordinates,
             coordinate_indices=self.coordinate_indices,
             time_index=self.time_index,
+            start_time=self.start_time,
+            frames_per_second=self.frames_per_second,
+            num_frames=self.num_frames,
             line_width=self.line_width,
             color=self.color,
             alpha=self.alpha
@@ -679,6 +748,9 @@ class Text3D(Geom3D, Text):
             coordinates=new_coordinates,
             coordinate_indices=self.coordinate_indices,
             time_index=self.time_index,
+            start_time=self.start_time,
+            frames_per_second=self.frames_per_second,
+            num_frames=self.num_frames,
             text=self.text,
             color=self.color,
             alpha=self.alpha,
