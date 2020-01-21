@@ -37,7 +37,13 @@ class Geom:
         num_frames=None,
         frame_width=None,
         frame_height=None,
-        id=None
+        id=None,
+        source_type=None,
+        source_id=None,
+        source_name=None,
+        object_type=None,
+        object_id=None,
+        object_name=None
     ):
         if coordinates is not None:
             try:
@@ -83,6 +89,12 @@ class Geom:
         self.frame_width = frame_width
         self.frame_height = frame_height
         self.id = id
+        self.source_type = source_type
+        self.source_id = source_id
+        self.source_name = source_name
+        self.object_type = object_type
+        self.object_id = object_id
+        self.object_name = object_name
 
     def to_json(self, indent=None):
         return json.dumps(self, cls=GeomJSONEncoder, indent=indent)
@@ -591,6 +603,12 @@ class Circle3D(Geom3D, Circle):
             fill=self.fill,
             alpha=self.alpha,
             id=self.id,
+            source_type=self.source_type,
+            source_id=self.source_id,
+            source_name=self.source_name,
+            object_type=self.object_type,
+            object_id=self.object_id,
+            object_name=self.object_name,
             frame_width=frame_width,
             frame_height=frame_height
         )
@@ -664,6 +682,12 @@ class Point3D(Geom3D, Point):
             color=self.color,
             alpha=self.alpha,
             id=self.id,
+            source_type=self.source_type,
+            source_id=self.source_id,
+            source_name=self.source_name,
+            object_type=self.object_type,
+            object_id=self.object_id,
+            object_name=self.object_name,
             frame_width=frame_width,
             frame_height=frame_height
         )
@@ -730,6 +754,12 @@ class Line3D(Geom3D, Line):
             color=self.color,
             alpha=self.alpha,
             id=self.id,
+            source_type=self.source_type,
+            source_id=self.source_id,
+            source_name=self.source_name,
+            object_type=self.object_type,
+            object_id=self.object_id,
+            object_name=self.object_name,
             frame_width=frame_width,
             frame_height=frame_height
         )
@@ -804,6 +834,12 @@ class Text3D(Geom3D, Text):
             horizontal_alignment=self.horizontal_alignment,
             vertical_alignment=self.vertical_alignment,
             id=self.id,
+            source_type=self.source_type,
+            source_id=self.source_id,
+            source_name=self.source_name,
+            object_type=self.object_type,
+            object_id=self.object_id,
+            object_name=self.object_name,
             frame_width=frame_width,
             frame_height=frame_height
         )
