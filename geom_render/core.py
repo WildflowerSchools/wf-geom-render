@@ -346,18 +346,19 @@ class Geom3D(Geom):
             num_points
         ))
         process_start_time = time.time()
-        new_coordinates = np.apply_along_axis(
-            lambda points: cv_utils.project_points(
-                points,
-                rotation_vector,
-                translation_vector,
-                camera_matrix,
-                distortion_coefficients,
-                remove_behind_camera=True
-            ),
-            axis=-1,
-            arr=self.coordinates
+        new_coordinates_flattened = cv_utils.project_points(
+            self.coordinates.reshape((-1, 3)),
+            rotation_vector,
+            translation_vector,
+            camera_matrix,
+            distortion_coefficients,
+            remove_behind_camera=True
         )
+        new_coordinates = new_coordinates_flattened.reshape((
+            num_timesteps,
+            num_points_per_timestep,
+            2
+        ))
         process_time_elapsed = time.time() - process_start_time
         logger.info('Projected {} points in {:.1f} seconds ({:.1f} microseconds per point)'.format(
             num_points,
