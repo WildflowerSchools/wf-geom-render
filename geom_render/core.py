@@ -7,6 +7,7 @@ import json
 import datetime
 import logging
 from uuid import uuid4
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,23 @@ class Geom:
         self.object_name = object_name
 
     def to_json(self, indent=None):
-        return json.dumps(self, cls=GeomJSONEncoder, indent=indent)
+        num_timesteps = self.coordinates.shape[0]
+        num_points_per_timestep = self.coordinates.shape[1]
+        num_points = num_timesteps*num_points_per_timestep
+        logger.info('Creating JSON for {} timesteps times {} points for a total of {} points'.format(
+            num_timesteps,
+            num_points_per_timestep,
+            num_points
+        ))
+        process_start_time=time.time()
+        json_output = json.dumps(self, cls=GeomJSONEncoder, indent=indent)
+        process_time_elapsed = time.time() - process_start_time
+        logger.info('Created JSON for {} points in {:.1f} seconds ({:.1f} microseconds per point)'.format(
+            num_points,
+            process_time_elapsed,
+            10**6*process_time_elapsed/num_points
+        ))
+        return json_output
 
     def get_time_slice(self, index):
         new_geom = copy.deepcopy(self)
@@ -115,7 +132,8 @@ class Geom:
         new_frames_per_second=None,
         new_num_frames=None,
         method='interpolate',
-        progress_bar=False
+        progress_bar=False,
+        notebook=False
     ):
         if method not in ['interpolate', 'fill']:
             raise ValueError('Available resampling methods are \'interpolate\' and \'fill\'')
@@ -164,7 +182,10 @@ class Geom:
         old_time_index_pointer = 0
         new_time_index_iterable = range(calculated_new_num_frames)
         if progress_bar:
-            new_time_index_iterable = tqdm.tqdm_notebook(new_time_index_iterable)
+            if notebook:
+                new_time_index_iterable = tqdm.tqdm_notebook(new_time_index_iterable)
+            else:
+                new_time_index_iterable = tqdm.tqdm(new_time_index_iterable)
         for new_time_index_pointer in new_time_index_iterable:
             if calculated_new_time_index[new_time_index_pointer] < old_time_index[old_time_index_pointer]:
                 continue
@@ -236,7 +257,8 @@ class Geom2D(Geom):
         input_path,
         output_path,
         start_time=None,
-        progress_bar=False
+        progress_bar=False,
+        notebook=False
     ):
         video_input = cv_utils.VideoInput(
             input_path=input_path,
@@ -258,7 +280,10 @@ class Geom2D(Geom):
                 video_parameters=video_input.video_parameters
             )
             if progress_bar:
-                t = tqdm.tqdm_notebook(total=video_frame_count)
+                if notebook:
+                    t = tqdm.tqdm_notebook(total=video_frame_count)
+                else:
+                    t = tqdm.tqdm(total=video_frame_count)
             for frame_index in range(video_frame_count):
                 frame = video_input.get_frame()
                 if frame is None:
@@ -274,7 +299,10 @@ class Geom2D(Geom):
                 video_parameters=video_input.video_parameters
             )
             if progress_bar:
-                t = tqdm.tqdm_notebook(total=video_input.video_parameters.frame_count)
+                if notebook:
+                    t = tqdm.tqdm_notebook(total=video_input.video_parameters.frame_count)
+                else:
+                    t = tqdm.tqdm(total=video_input.video_parameters.frame_count)
             frame_count_stream = 0
             while(video_input.is_opened()):
                 frame = video_input.get_frame()
@@ -309,6 +337,15 @@ class Geom3D(Geom):
         camera_matrix,
         distortion_coefficients
     ):
+        num_timesteps = self.coordinates.shape[0]
+        num_points_per_timestep = self.coordinates.shape[1]
+        num_points = num_timesteps*num_points_per_timestep
+        logger.info('Projecting {} timesteps times {} points for a total of {} points'.format(
+            num_timesteps,
+            num_points_per_timestep,
+            num_points
+        ))
+        process_start_time = time.time()
         new_coordinates = np.apply_along_axis(
             lambda points: cv_utils.project_points(
                 points,
@@ -321,6 +358,12 @@ class Geom3D(Geom):
             axis=-1,
             arr=self.coordinates
         )
+        process_time_elapsed = time.time() - process_start_time
+        logger.info('Projected {} points in {:.1f} seconds ({:.1f} microseconds per point)'.format(
+            num_points,
+            process_time_elapsed,
+            10**6*process_time_elapsed/num_points
+        ))
         return new_coordinates
 
 class GeomCollection(Geom):
@@ -337,7 +380,8 @@ class GeomCollection(Geom):
         cls,
         geom_list,
         method='interpolate',
-        progress_bar=False
+        progress_bar=False,
+        notebook=False
     ):
         num_spatial_dimensions = geom_list[0].coordinates.shape[-1]
         frame_width = geom_list[0].frame_width
@@ -374,13 +418,17 @@ class GeomCollection(Geom):
         new_geom_list = list()
         new_coordinate_index = 0
         if progress_bar:
-            geom_list = tqdm.tqdm_notebook(geom_list)
+            if notebook:
+                geom_list = tqdm.tqdm_notebook(geom_list)
+            else:
+                geom_list = tqdm.tqdm(geom_list)
         for geom in geom_list:
             if new_time_index is not None:
                 new_geom = geom.resample(
                     new_time_index=new_time_index,
                     method=method,
-                    progress_bar=progress_bar
+                    progress_bar=progress_bar,
+                    notebook=notebook
                 )
             else:
                 new_geom = copy.deepcopy(geom)
