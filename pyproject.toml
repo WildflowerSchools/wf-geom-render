@@ -1,0 +1,32 @@
+[project]
+name = "wf-geom-render"
+dynamic = ["version"]
+
+[tool.poetry]
+name = "wf-geom-render"
+version = "0.3.0"
+authors = ["Theodore Quinn <ted.quinn@wildflowerschools.org>"]
+description = "A library for projecting 3D geoms into 2D videos"
+keywords = ["opencv", "cv"]
+repository = "https://github.com/WildflowerSchools/wf-geom-render"
+readme = "README.md"
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python"
+]
+
+[tool.poetry.dependencies]
+matplotlib = ">=3.1.2"
+numpy = ">=1.17"
+python = "^3.8"
+tqdm = ">=4.41.1"
+wf-cv-utils = ">=0.3.1"
+
+[tool.setuptools]
+py-modules = []
+
+[build-system]
+requires = ["poetry-core", "setuptools"]
+build-backend = "poetry.core.masonry.api"
