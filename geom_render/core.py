@@ -703,20 +703,16 @@ class GeomCollection2D(Geom2D, GeomCollection):
 
     def draw_matplotlib(self, axis):
         for geom_index, geom in enumerate(self.geom_list):
-            geom_copy = copy.deepcopy(geom)
-            geom_copy.coordinates = self.coordinates.take(
-                geom_copy.coordinate_indices, 1
+            geom.coordinates = self.coordinates.take(
+                geom.coordinate_indices, 1
             )
-            geom_copy.draw_matplotlib(axis)
+            geom.draw_matplotlib(axis)
 
     def draw_opencv(self, image, time_index):
         new_image = image.copy()
         for geom_index, geom in enumerate(self.geom_list):
-            geom_copy = copy.deepcopy(geom)
-            geom_copy.coordinates = self.coordinates.take([time_index], 0).take(
-                geom_copy.coordinate_indices, 1
-            )
-            new_image = geom_copy.draw_opencv(new_image)
+            geom.coordinates = self.coordinates[time_index, [geom.coordinate_indices]]
+            new_image = geom.draw_opencv(new_image)
         return new_image
 
 
