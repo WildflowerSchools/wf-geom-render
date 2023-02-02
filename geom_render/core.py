@@ -451,7 +451,7 @@ class Geom3D(Geom):
             camera_matrix,
             distortion_coefficients,
             remove_behind_camera=True,
-            # remove_outside_frame=True,
+            remove_outside_frame=True,
             image_corners=image_corners,
         )
         new_coordinates = new_coordinates_flattened.reshape(
