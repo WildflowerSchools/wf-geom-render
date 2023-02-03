@@ -353,11 +353,7 @@ class Geom2D(Geom):
                 raise ValueError(
                     "Video must have start time, FPS, and frame count info to overlay geom sequence"
                 )
-            resampled_geom = self.resample(
-                new_start_time=video_start_time,
-                new_frames_per_second=video_fps,
-                new_num_frames=video_frame_count,
-            )
+
             video_output = cv_utils.VideoOutput(
                 output_path, video_parameters=video_input.video_parameters
             )
@@ -374,8 +370,9 @@ class Geom2D(Geom):
                             frame_index
                         )
                     )
-                overlay_geom = resampled_geom.get_time_slice(frame_index)
-                frame = overlay_geom.draw_opencv(frame)
+                if frame_index < self.time_index.shape[0]:
+                    overlay_geom = self.get_time_slice(frame_index)
+                    frame = overlay_geom.draw_opencv(frame)
                 video_output.write_frame(frame)
                 if progress_bar:
                     t.update()
@@ -708,10 +705,10 @@ class GeomCollection2D(Geom2D, GeomCollection):
             )
             geom.draw_matplotlib(axis)
 
-    def draw_opencv(self, image, time_index):
+    def draw_opencv(self, image):
         new_image = image.copy()
         for geom_index, geom in enumerate(self.geom_list):
-            geom.coordinates = self.coordinates[time_index, [geom.coordinate_indices]]
+            geom.coordinates = self.coordinates.take(geom.coordinate_indices, 1)
             new_image = geom.draw_opencv(new_image)
         return new_image
 
