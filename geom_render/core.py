@@ -34,22 +34,22 @@ class GeomJSONEncoder(json.JSONEncoder):
 
 class Geom:
     def __init__(
-            self,
-            coordinates=None,
-            coordinate_indices=None,
-            time_index=None,
-            start_time=None,
-            frames_per_second=None,
-            num_frames=None,
-            frame_width=None,
-            frame_height=None,
-            id=None,
-            source_type=None,
-            source_id=None,
-            source_name=None,
-            object_type=None,
-            object_id=None,
-            object_name=None,
+        self,
+        coordinates=None,
+        coordinate_indices=None,
+        time_index=None,
+        start_time=None,
+        frames_per_second=None,
+        num_frames=None,
+        frame_width=None,
+        frame_height=None,
+        id=None,
+        source_type=None,
+        source_id=None,
+        source_name=None,
+        object_type=None,
+        object_id=None,
+        object_name=None,
     ):
         if coordinates is not None:
             try:
@@ -60,9 +60,7 @@ class Geom:
                 raise ValueError("Coordinates for geom must be of dimension 3 or less")
             while coordinates.ndim < 3:
                 coordinates = np.expand_dims(coordinates, axis=0)
-        if (
-            time_index is not None
-        ):
+        if time_index is not None:
             # Ragged time index
             try:
                 time_index = np.array(time_index)
@@ -80,19 +78,19 @@ class Geom:
                     )
                 coordinates = coordinates.take(time_index_sort_order, axis=0)
         elif (
-                time_index is None
-                and start_time is not None
-                and frames_per_second is not None
-                and num_frames is not None
+            time_index is None
+            and start_time is not None
+            and frames_per_second is not None
+            and num_frames is not None
         ):
             # Regular time index
             frames_per_second = float(frames_per_second)
             num_frames = int(round(num_frames))
         elif (
-                time_index is None
-                and start_time is None
-                and frames_per_second is None
-                and num_frames is None
+            time_index is None
+            and start_time is None
+            and frames_per_second is None
+            and num_frames is None
         ):
             # No time index
             pass
@@ -135,27 +133,25 @@ class Geom:
                 num_points,
                 process_time_elapsed,
                 10**6 * process_time_elapsed / num_points,
-                )
+            )
         )
         return json_output
 
     def resample(
-            self,
-            new_time_index=None,
-            new_start_time=None,
-            new_frames_per_second=None,
-            new_num_frames=None,
-            method="interpolate",
-            progress_bar=False,
-            notebook=False,
+        self,
+        new_time_index=None,
+        new_start_time=None,
+        new_frames_per_second=None,
+        new_num_frames=None,
+        method="interpolate",
+        progress_bar=False,
+        notebook=False,
     ):
         if method not in ["interpolate", "fill"]:
             raise ValueError(
                 "Available resampling methods are 'interpolate' and 'fill'"
             )
-        if (
-            new_time_index is not None
-        ):
+        if new_time_index is not None:
             # New ragged time index
             try:
                 new_time_index = np.array(new_time_index)
@@ -167,10 +163,10 @@ class Geom:
             calculated_new_num_frames = new_time_index.shape[0]
             calculated_new_time_index = new_time_index
         elif (
-                new_time_index is None
-                and new_start_time is not None
-                and new_frames_per_second is not None
-                and new_num_frames is not None
+            new_time_index is None
+            and new_start_time is not None
+            and new_frames_per_second is not None
+            and new_num_frames is not None
         ):
             # New regular time index
             new_frames_per_second = float(new_frames_per_second)
@@ -188,10 +184,10 @@ class Geom:
                 "Must specify time index or all of start time/fps/number of frames"
             )
         if (
-                self.time_index is None
-                and self.start_time is None
-                and self.frames_per_second is None
-                and self.num_frames is None
+            self.time_index is None
+            and self.start_time is None
+            and self.frames_per_second is None
+            and self.num_frames is None
         ):
             # No old time index
             new_geom = copy.deepcopy(self)
@@ -204,10 +200,10 @@ class Geom:
             )
             return new_geom
         elif (
-                self.time_index is None
-                and self.start_time is not None
-                and self.frames_per_second is not None
-                and self.num_frames is not None
+            self.time_index is None
+            and self.start_time is not None
+            and self.frames_per_second is not None
+            and self.num_frames is not None
         ):
             old_time_between_frames = datetime.timedelta(
                 microseconds=int(round(10**6 / self.frames_per_second))
@@ -216,9 +212,7 @@ class Geom:
                 self.start_time + i * old_time_between_frames
                 for i in range(self.num_frames)
             ]
-        elif (
-            self.time_index is not None
-        ):
+        elif self.time_index is not None:
             old_time_index = self.time_index
         else:
             raise ValueError(
@@ -226,8 +220,8 @@ class Geom:
             )
         coordinates_time_slice_shape = self.coordinates.shape[1:]
         new_coordinates_shape = (
-                                    calculated_new_num_frames,
-                                ) + coordinates_time_slice_shape
+            calculated_new_num_frames,
+        ) + coordinates_time_slice_shape
         new_coordinates = np.full(new_coordinates_shape, np.nan)
         old_time_index_pointer = 0
         new_time_index_iterable = range(calculated_new_num_frames)
@@ -238,25 +232,25 @@ class Geom:
                 new_time_index_iterable = tqdm.tqdm(new_time_index_iterable)
         for new_time_index_pointer in new_time_index_iterable:
             if (
-                    calculated_new_time_index[new_time_index_pointer]
-                    < old_time_index[old_time_index_pointer]
+                calculated_new_time_index[new_time_index_pointer]
+                < old_time_index[old_time_index_pointer]
             ):
                 continue
             if calculated_new_time_index[new_time_index_pointer] > old_time_index[-1]:
                 continue
             while (
-                    calculated_new_time_index[new_time_index_pointer]
-                    > old_time_index[old_time_index_pointer + 1]
+                calculated_new_time_index[new_time_index_pointer]
+                > old_time_index[old_time_index_pointer + 1]
             ):
                 old_time_index_pointer += 1
             if method == "interpolate":
                 later_slice_weight = (
-                                             calculated_new_time_index[new_time_index_pointer]
-                                             - old_time_index[old_time_index_pointer]
-                                     ) / (
-                                             old_time_index[old_time_index_pointer + 1]
-                                             - old_time_index[old_time_index_pointer]
-                                     )
+                    calculated_new_time_index[new_time_index_pointer]
+                    - old_time_index[old_time_index_pointer]
+                ) / (
+                    old_time_index[old_time_index_pointer + 1]
+                    - old_time_index[old_time_index_pointer]
+                )
                 earlier_slice_weight = 1.0 - later_slice_weight
             else:
                 earlier_slice_weight = 1.0
@@ -264,15 +258,15 @@ class Geom:
             if earlier_slice_weight == 0.0:
                 new_coordinates[new_time_index_pointer] = self.coordinates[
                     old_time_index_pointer + 1
-                    ]
+                ]
             elif later_slice_weight == 0.0:
                 new_coordinates[new_time_index_pointer] = self.coordinates[
                     old_time_index_pointer
                 ]
             else:
                 new_coordinates[new_time_index_pointer] = (
-                        earlier_slice_weight * self.coordinates[old_time_index_pointer]
-                        + later_slice_weight * self.coordinates[old_time_index_pointer + 1]
+                    earlier_slice_weight * self.coordinates[old_time_index_pointer]
+                    + later_slice_weight * self.coordinates[old_time_index_pointer + 1]
                 )
         new_geom = copy.deepcopy(self)
         new_geom.time_index = new_time_index
@@ -290,13 +284,13 @@ class Geom2D(Geom):
             raise ValueError("For 2D geoms, size of last dimension must be 2")
 
     def plot_matplotlib(
-            self,
-            frame_index,
-            image_size=None,
-            background_image=None,
-            background_alpha=None,
-            show_axes=True,
-            show=True,
+        self,
+        frame_index,
+        image_size=None,
+        background_image=None,
+        background_alpha=None,
+        show_axes=True,
+        show=True,
     ):
         if image_size is None and background_image is not None:
             image_size = np.array(
@@ -311,25 +305,23 @@ class Geom2D(Geom):
             plt.show()
 
     def overlay_video(
-            self,
-            input_path,
-            output_path,
-            start_time=None,
-            include_timestamp=False,
-            progress_bar=False,
-            notebook=False,
+        self,
+        input_path,
+        output_path,
+        start_time=None,
+        include_timestamp=False,
+        progress_bar=False,
+        notebook=False,
     ):
         video_input = cv_utils.VideoInput(input_path=input_path, start_time=start_time)
-        if (
-            self.time_index is not None
-        ):
+        if self.time_index is not None:
             video_start_time = video_input.video_parameters.start_time
             video_fps = video_input.video_parameters.fps
             video_frame_count = video_input.video_parameters.frame_count
             if (
-                    video_start_time is None
-                    or video_fps is None
-                    or video_frame_count is None
+                video_start_time is None
+                or video_fps is None
+                or video_frame_count is None
             ):
                 raise ValueError(
                     "Video must have start time, FPS, and frame count info to overlay geom sequence"
@@ -352,15 +344,12 @@ class Geom2D(Geom):
                         )
                     )
                 if frame_index < self.time_index.shape[0]:
-                    frame = self.draw_opencv(
-                        image=frame,
-                        frame_index=frame_index
-                    )
+                    frame = self.draw_opencv(image=frame, frame_index=frame_index)
                     if include_timestamp:
                         frame = cv_utils.draw_timestamp(
                             original_image=frame,
                             timestamp=self.time_index[frame_index],
-                            box_alpha=0.6
+                            box_alpha=0.6,
                         )
                 video_output.write_frame(frame)
                 if progress_bar:
@@ -388,7 +377,7 @@ class Geom2D(Geom):
                 else:
                     break
             if video_input.video_parameters.frame_count is not None and int(
-                    frame_count_stream
+                frame_count_stream
             ) != int(video_input.video_parameters.frame_count):
                 logger.warning(
                     "Expected {} frames but got {} frames".format(
@@ -409,13 +398,13 @@ class Geom3D(Geom):
             raise ValueError("For 3D geoms, size of last dimension must be 3")
 
     def project_coordinates(
-            self,
-            rotation_vector,
-            translation_vector,
-            camera_matrix,
-            distortion_coefficients,
-            frame_width=None,
-            frame_height=None,
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None,
     ):
         num_timesteps = self.coordinates.shape[0]
         num_points_per_timestep = self.coordinates.shape[1]
@@ -456,7 +445,7 @@ class Geom3D(Geom):
                 num_points,
                 process_time_elapsed,
                 10**6 * process_time_elapsed / num_points,
-                )
+            )
         )
         return new_coordinates
 
@@ -468,14 +457,14 @@ class GeomCollection(Geom):
 
     @classmethod
     def from_geom_list(
-            cls,
-            geom_list,
-            start_time,
-            end_time,
-            frames_per_second,
-            method="interpolate",
-            progress_bar=False,
-            notebook=False,
+        cls,
+        geom_list,
+        start_time,
+        end_time,
+        frames_per_second,
+        method="interpolate",
+        progress_bar=False,
+        notebook=False,
     ):
         num_spatial_dimensions = geom_list[0].coordinates.shape[-1]
         frame_width = geom_list[0].frame_width
@@ -508,9 +497,7 @@ class GeomCollection(Geom):
                 raise ValueError(
                     "All geoms in list must have the same frame height (if specified)"
                 )
-            if (
-                geom.time_index is not None
-            ):
+            if geom.time_index is not None:
                 this_geom_timestamp_set = geom.time_index
                 new_timestamp_set = new_timestamp_set.union(this_geom_timestamp_set)
             elif (
@@ -529,10 +516,10 @@ class GeomCollection(Geom):
                 this_geom_timestamp_set = calculated_time_index
                 new_timestamp_set = new_timestamp_set.union(this_geom_timestamp_set)
             elif (
-                    geom.time_index is None
-                    and geom.start_time is None
-                    and geom.frames_per_second is None
-                    and geom.num_frames is None
+                geom.time_index is None
+                and geom.start_time is None
+                and geom.frames_per_second is None
+                and geom.num_frames is None
             ):
                 pass
             else:
@@ -555,15 +542,34 @@ class GeomCollection(Geom):
             else:
                 geom_list = tqdm.tqdm(geom_list)
         for idx, geom in enumerate(geom_list):
-            all_timestamps_list = list(set(rounded_time_index).union(new_time_indexes[idx]))
+            all_timestamps_list = list(
+                set(rounded_time_index).union(new_time_indexes[idx])
+            )
 
             all_timestamps_mapped_to_nan = pd.Series(
-                np.full((len(all_timestamps_list), 3,), np.nan).tolist(),
-                index=all_timestamps_list)
+                np.full(
+                    (
+                        len(all_timestamps_list),
+                        3,
+                    ),
+                    np.nan,
+                ).tolist(),
+                index=all_timestamps_list,
+            )
             geom_timestamps_mapped_to_coordinates = pd.Series(
-                geom.coordinates.reshape((len(geom.time_index),3,)).tolist(),
-                index=geom.time_index)
-            all_timestamps_mapped_to_coordinates = geom_timestamps_mapped_to_coordinates.combine_first(all_timestamps_mapped_to_nan).sort_index(ascending=True)
+                geom.coordinates.reshape(
+                    (
+                        len(geom.time_index),
+                        3,
+                    )
+                ).tolist(),
+                index=geom.time_index,
+            )
+            all_timestamps_mapped_to_coordinates = (
+                geom_timestamps_mapped_to_coordinates.combine_first(
+                    all_timestamps_mapped_to_nan
+                ).sort_index(ascending=True)
+            )
 
             df_coordinates = pd.DataFrame(
                 np.array(all_timestamps_mapped_to_coordinates.to_list()),
@@ -573,7 +579,9 @@ class GeomCollection(Geom):
             df_coordinates = df_coordinates.interpolate(
                 method="time", limit=10, limit_direction="both"
             )
-            df_coordinates = df_coordinates[df_coordinates.index.isin(rounded_time_index)]
+            df_coordinates = df_coordinates[
+                df_coordinates.index.isin(rounded_time_index)
+            ]
             np_new_coordinates = df_coordinates.to_numpy().reshape(
                 (len(df_coordinates), 1, 3)
             )
@@ -589,11 +597,11 @@ class GeomCollection(Geom):
 
             num_points = new_geom.coordinates.shape[1]
             new_coordinates[
-            :,
-            new_coordinates_point_index : (
+                :,
+                new_coordinates_point_index : (
                     new_coordinates_point_index + num_points
-            ),
-            :,
+                ),
+                :,
             ] = new_geom.coordinates
 
             if isinstance(geom, GeomCollection):
@@ -627,7 +635,7 @@ class GeomCollection(Geom):
 
 class Circle(Geom):
     def __init__(
-            self, radius=6, line_width=1.5, color="#00ff00", fill=True, alpha=1.0, **kwargs
+        self, radius=6, line_width=1.5, color="#00ff00", fill=True, alpha=1.0, **kwargs
     ):
         super().__init__(**kwargs)
         self.radius = radius
@@ -656,13 +664,13 @@ class Line(Geom):
 
 class Text(Geom):
     def __init__(
-            self,
-            text=None,
-            color="#00ff00",
-            alpha=1.0,
-            horizontal_alignment="center",
-            vertical_alignment="bottom",
-            **kwargs,
+        self,
+        text=None,
+        color="#00ff00",
+        alpha=1.0,
+        horizontal_alignment="center",
+        vertical_alignment="bottom",
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.text = text
@@ -678,9 +686,7 @@ class GeomCollection2D(Geom2D, GeomCollection):
 
     def draw_matplotlib(self, axis, frame_index):
         for geom_index, geom in enumerate(self.geom_list):
-            geom.coordinates = self.coordinates.take(
-                geom.coordinate_indices, 1
-            )
+            geom.coordinates = self.coordinates.take(geom.coordinate_indices, 1)
             geom.draw_matplotlib(axis, frame_index)
 
     def draw_opencv(self, image, frame_index):
@@ -695,13 +701,13 @@ class GeomCollection3D(Geom3D, GeomCollection):
         super().__init__(**kwargs)
 
     def project(
-            self,
-            rotation_vector,
-            translation_vector,
-            camera_matrix,
-            distortion_coefficients,
-            frame_width=None,
-            frame_height=None,
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None,
     ):
         new_coordinates = None
         if self.coordinates is not None:
@@ -780,7 +786,7 @@ class Circle2D(Geom2D, Circle):
             coordinates=coordinates,
             radius=self.radius,
             line_width=self.line_width,
-            color=self.line_color,
+            color=self.color,
             fill=self.fill,
             alpha=self.alpha,
         )
@@ -792,13 +798,13 @@ class Circle3D(Geom3D, Circle):
         super().__init__(**kwargs)
 
     def project(
-            self,
-            rotation_vector,
-            translation_vector,
-            camera_matrix,
-            distortion_coefficients,
-            frame_width=None,
-            frame_height=None,
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None,
     ):
         new_coordinates = None
         if self.coordinates is not None:
@@ -889,13 +895,13 @@ class Point3D(Geom3D, Point):
         super().__init__(**kwargs)
 
     def project(
-            self,
-            rotation_vector,
-            translation_vector,
-            camera_matrix,
-            distortion_coefficients,
-            frame_width=None,
-            frame_height=None,
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None,
     ):
         new_coordinates = None
         if self.coordinates is not None:
@@ -981,13 +987,13 @@ class Line3D(Geom3D, Line):
         super().__init__(**kwargs)
 
     def project(
-            self,
-            rotation_vector,
-            translation_vector,
-            camera_matrix,
-            distortion_coefficients,
-            frame_width=None,
-            frame_height=None,
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None,
     ):
         new_coordinates = None
         if self.coordinates is not None:
@@ -1075,13 +1081,13 @@ class Text3D(Geom3D, Text):
         super().__init__(**kwargs)
 
     def project(
-            self,
-            rotation_vector,
-            translation_vector,
-            camera_matrix,
-            distortion_coefficients,
-            frame_width=None,
-            frame_height=None,
+        self,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        distortion_coefficients,
+        frame_width=None,
+        frame_height=None,
     ):
         new_coordinates = None
         if self.coordinates is not None:
